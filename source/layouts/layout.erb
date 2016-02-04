@@ -14,7 +14,7 @@ License for the specific language governing permissions and limitations
 under the License.
 %>
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <!-- Always force latest IE rendering engine or request Chrome Frame -->
@@ -23,10 +23,16 @@ under the License.
     <!-- Use title if it's in the page YAML frontmatter -->
     <title><%= current_page.data.title || "API Documentation" %></title>
 
+    <link href="//cloudant.com/wp-content/themes/cloudant/images/favicon.ico" rel='shortcut icon' type='image/vnd.microsoft.icon' />
+    <link href="//cloudant.com/wp-content/themes/cloudant/images/favicon.png" rel='icon' type='image/png' />
+
     <%= stylesheet_link_tag "screen", media: 'screen' %>
     <%= stylesheet_link_tag "typeahead", media: 'screen' %>
     <%= stylesheet_link_tag "print", media: 'print' %>
     <%= javascript_include_tag  "all" %>
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
     
     <script type="text/javascript">
    
@@ -76,31 +82,30 @@ under the License.
         $('#hideCodeButton').click(hideCode);
         $('#showCodeButton').click(showCode);
         
-        var headerSelectors = "h1,h2,h3";
-        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
-          headerSelectors = "h1,h2";
+        var headerSelectors = "h3";
+        if ($('h3').length !== 0) { 
+          var toc = $("#toc").tocify({
+            selectors: headerSelectors,
+            extendPage: false,
+            theme: "none",
+            smoothScroll: false,
+            showEffectSpeed: 0,
+            hideEffectSpeed: 180,
+            ignoreSelector: ".toc-ignore",
+            hashGenerator: 'pretty',
+            highlightOffset: 60,
+            scrollTo: 55,
+            scrollHistory: true,
+            hashGenerator: function(text, element) {
+              return element[0].getAttribute('id');
+            }
+          }).data("toc-tocify");
+          // Hack to make already open sections to start opened,
+          // instead of displaying an ugly animation
+          setTimeout(function() {
+            toc.setOption("showEffectSpeed", 180);
+          },50);
         }
-        var toc = $("#toc").tocify({
-          selectors: headerSelectors,
-          extendPage: false,
-          theme: "none",
-          smoothScroll: false,
-          showEffectSpeed: 0,
-          hideEffectSpeed: 180,
-          ignoreSelector: ".toc-ignore",
-          hashGenerator: 'pretty',
-          highlightOffset: 60,
-          scrollTo: 48,
-          scrollHistory: true,
-          hashGenerator: function(text, element) {
-            return element[0].getAttribute('id');
-          }
-        }).data("toc-tocify");
-        // Hack to make already open sections to start opened,
-        // instead of displaying an ugly animation
-        setTimeout(function() {
-          toc.setOption("showEffectSpeed", 180);
-        },50);
         setupLanguages([
           <% if current_page.data.language_tabs %>
             <% current_page.data.language_tabs.each do |lang| %>
@@ -112,15 +117,27 @@ under the License.
             <% end %>
           <% end %>
         ]);
-      });
       
+        var languageInit = $('#lang-selector li.active').text();
+        $('#selected-language').text(languageInit);
+        $('#selected-language').click(langDropdown);
+          
+        function langDropdown() {
+          $('#lang-selector ul').show();
+        }
+          
+        $('blockquote a').attr('title', 'Click here to try out interactive examples!');
+        $('blockquote a').attr('target', '_blank');
+        
+      });
     </script>
+    
   </head>
 
   <body class="<%= page_classes %>">
         
     <div class="main-header">
-      <%= image_tag "ibm_cloudant.png" %>
+      <img src="images/ibm_cloudant.png" alt="Cloudant logo"/>
       <div class="header-title">Documentation</div>
     </div>
     
@@ -134,28 +151,107 @@ under the License.
         </form>
       </div>
       
-      <ul id="tocify-header0" class="tocify-header first-header">
-        <% [
-             ['index.html', 'Overview', 'index.html#-overview'],
-             ['basics.html', 'Cloudant Basics', 'basics.html#-cloudant-basics'],
-             ['libraries.html', 'Client Libraries', 'libraries.html#-client-libraries'],
-             ['api.html', 'API Reference', 'api.html#-api-reference'],
-             ['guides.html', 'Guides', 'guides.html#-guides']
-           ].each { |page| %>
-		          <% if request.path != page[0] %>
+      <ul class="tocify-header first-header">
+        <%
+          class Page
+            def initialize(name, link, subpages)
+              @name = name
+              @link = link
+              @subpages = subpages
+            end
+            attr_reader :subpages
+            attr_reader :name
+            attr_reader :link
+          end
+          [
+            Page.new('Overview', 'index.html', [
+              Page.new('Contents', 'index.html#contents', []),
+              Page.new('Contribute', 'index.html#contribute', [])
+            ]),
+            Page.new('Cloudant Basics', 'basics.html', [
+              Page.new('Database as a Service', 'basics.html#database-as-a-service', []),
+              Page.new('IBM Bluemix', 'basics.html#ibm-bluemix', []),
+              Page.new('HTTP API', 'basics.html#http-api', []),
+              Page.new('JSON', 'basics.html#json', []),
+              Page.new('How do I find data?', 'basics.html#how-do-i-find-data?', []),
+              Page.new('Distributed', 'basics.html#distributed', []),
+              Page.new('Replication', 'basics.html#replication', []),
+              Page.new('Quorum - writing and reading', 'basics.html#quorum---writing-and-reading', []),
+              Page.new('Cloudant Local', 'basics.html#cloudant-local', [])
+            ]),
+            Page.new('Client Libraries', 'libraries.html', [
+              Page.new('Supported', 'libraries.html#supported-client-libraries', []),
+              Page.new('Third party', 'libraries.html#third-party-client-libraries', [])
+            
+            ]),
+            Page.new('API Reference', 'api.html', [
+              Page.new('HTTP', 'http.html', []),
+              Page.new('Account', 'account.html', []),
+              Page.new('Authentication', 'authentication.html', []),
+              Page.new('Authorization', 'authorization.html', []),
+              Page.new('CORS', 'cors.html', []),
+              Page.new('Databases', 'database.html', []),
+              Page.new('Documents', 'document.html', []),
+              Page.new('Attachments', 'attachments.html', []),
+              Page.new('Query', 'cloudant_query.html', []),
+              Page.new('Design Documents', 'design_documents.html', []),
+              Page.new('Views (MapReduce)', 'creating_views.html', []),
+              Page.new('Search', 'search.html', []),
+              Page.new('Cloudant Geospatial', 'geo.html', []),
+              Page.new('Metadata Discovery', 'metadata_discovery.html', []),
+              Page.new('Replication', 'replication.html', []),
+              Page.new('Advanced Replication', 'advanced_replication.html', []),
+              Page.new('Active tasks', 'active_tasks.html', []),
+              Page.new('Advanced', 'advanced.html', []),
+              Page.new('Backup', 'backup.html', []),
+              Page.new('Try it', 'try.html', [])
+            ]),
+            Page.new('Guides', 'guides.html', [
+              Page.new('JSON', 'json.html', []),
+              Page.new('Replication', 'replication_guide.html', []),
+              Page.new('Managing tasks', 'managing_tasks.html', []),
+              Page.new('Document versioning and conflicts', 'mvcc.html', []),
+              Page.new('Transactions in Cloudant', 'transactions.html', []),
+              Page.new('CAP theorem', 'cap_theorem.html', []),
+              Page.new('AcID', 'acid.html', []),
+              Page.new('Back up your data', 'backup-guide.html', []),
+              Page.new('CouchApps', 'couchapps.html', []),
+              Page.new('Design document management', 'design_document_management.html', []),
+              Page.new('Monitoring', 'monitoring.html', [])
+            ])
+          ].each { |page|
+            %>
+		        <li class="tocify-item">
+				      <a href="<%=page.link%>"><%=page.name%></a>
+				    </li>
+				    <%
+				    if !page.subpages.empty? && (page.subpages.any? { |subpage| subpage.link.split('#')[0] == request.path } || page.link.split('#')[0] == request.path)
+				      %> <ul class="tocify-subheader-styles" style="display: block;"> <%
+				      page.subpages.each { |subpage|
+				        %>
 		            <li class="tocify-item">
-				          <a href="<%=page[2]%>"><%=page[1]%></a>
+				          <a href="<%=subpage.link%>"><%=subpage.name%></a>
 				        </li>
-		          <% else %>
-		            <div id="toc"> </div>
-		          <% end %>
-        <% } %>
+				        <%
+				        if subpage.link == request.path
+				          %>
+				            <div id="toc"></div>
+				          <%
+				        end
+				      }
+				      %> </ul> <%
+				    end
+          } %>
       </ul>
       
+    
+      
+      
+      
       <ul class="toc-footer">
-        <li><a href="https://cloudant.com/"><%= image_tag "cloudant_icon.png" %></a></li>
-        <li><a href="https://github.com/cloudant-labs/slate"><%= image_tag "github_icon.png" %></a></li>
-        <li><a href="http://stackoverflow.com/questions/tagged/cloudant"><%= image_tag "stackoverflow_icon.png" %></a></li>
+        <li><a href="https://cloudant.com/"><img src="images/cloudant_icon.png" alt="Cloudant icon"/></a></li>
+        <li><a href="https://github.com/cloudant-labs/slate"><img src="images/github_icon.png" alt="Github icon"/></a></li>
+        <li><a href="http://stackoverflow.com/questions/tagged/cloudant"><img src="images/stackoverflow_icon.png" alt="Stackoverflow icon"/></a></li>
       </ul>
     </div>
     <div class="page-wrapper">
@@ -172,7 +268,6 @@ under the License.
           <% end %>
         <% end %>
         <%= yield %>
-        
       </div>
       <div class="dark-box">
         <div id="lang-selector">

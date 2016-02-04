@@ -1,6 +1,6 @@
 ## Document Versioning and MVCC
 
-Multi-version concurrency control (MVCC) is how Cloudant databases ensure that all of the nodes in a database's cluster contain only the [newest version](api.html#documents) of a document. Since Cloudant databases are [eventually consistent](#acid), this is necessary to prevent inconsistencies arising between nodes as a result of synchronizing between outdated documents.
+Multi-version concurrency control (MVCC) is how Cloudant databases ensure that all of the nodes in a database's cluster contain only the [newest version](document.html) of a document. Since Cloudant databases are [eventually consistent](#acid), this is necessary to prevent inconsistencies arising between nodes as a result of synchronizing between outdated documents.
 
 Multi-Version Concurrency Control (MVCC) enables concurrent read and write access to a Cloudant database. MVCC is a form of <a href="http://en.wikipedia.org/wiki/Optimistic_concurrency_control" target="_blank">optimistic concurrency</a>.
 It makes both read and write operations on Cloudant databases faster because there is no need for database locking on either read or write operations. MVCC also enables synchronization between Cloudant database nodes.
@@ -18,14 +18,14 @@ The two main uses of the revision number are to help:
 1.	Determine what documents must be replicated between servers.
 2.	Confirm that a client is trying to modify the latest version of a document.
 
-You must specify the previous `_rev` when [updating a document](api.html#update) or else your request will fail and return a [409 error](basics.html#http-status-codes).
+You must specify the previous `_rev` when [updating a document](document.html#update) or else your request will fail and return a [409 error](http.html#409).
 
 <aside class="warning">`_rev` should not be used to build a version control system.
 The reason is that it is an internal value used by the server.
 In addition, older revisions of a document are transient, and therefore removed regularly.</aside>
 
 You can query a particular revision using its `_rev`, however, older revisions are regularly deleted by a process called <a href="http://en.wikipedia.org/wiki/Data_compaction" target="blank">compaction</a>.
-A consequence of compaction is that you cannot rely on a successful response when querying a particular document revision using its `_rev` to obtain a history of revisions to your document. If you need a version history of your documents, a solution is to [create a new document](api.html#documentCreate) for each revision.
+A consequence of compaction is that you cannot rely on a successful response when querying a particular document revision using its `_rev` to obtain a history of revisions to your document. If you need a version history of your documents, a solution is to [create a new document](document.html#documentCreate) for each revision.
 
 ### Distributed Databases and Conflicts
 
@@ -139,6 +139,8 @@ Other conflict resolution strategies are:
 * time based: first or last edit
 * reporting conflicts to users and letting them decide on the best resolution
 * more sophisticated merging algorithms, e.g. 3-way merges of text fields
+
+For a practical example of how to implement these changes, see [this project with sample code](https://github.com/glynnbird/deconflict).
 
 #### Upload the new revision
 

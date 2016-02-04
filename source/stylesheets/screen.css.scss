@@ -134,7 +134,7 @@ html, body {
 
   // Subheaders are the submenus that slide open
   // in the table of contents.
-  .tocify-subheader {
+  .tocify-subheader , .tocify-subheader-styles {
     display: none; // tocify will override this when needed
     background-color: $nav-subitem-bg;
     font-weight: 400;
@@ -164,7 +164,7 @@ html, body {
       box-shadow: none; // otherwise it'll overflow out of the subheader
     }
   }
-  .tocify-subheader ul {
+  .tocify-subheader ul, .tocify-subheader-styles ul {
     padding-left: $nav-indent;
   }
 
@@ -219,8 +219,19 @@ html, body {
     }
   }
 
+
+
 }
 
+
+  @-moz-document url-prefix() {
+    #searchbox button {
+      padding-bottom: 12px;
+    }
+  }
+  #searchbox button {
+    padding-top: 6px;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 // PAGE LAYOUT AND CODE SAMPLE BACKGROUND
@@ -316,7 +327,7 @@ body, html {
   min-height: 100%;
   padding-bottom: 60px;
 
-  &>h1, &>h2, &>h3, &>h4, &>p, &>table, &>ul, &>ol, &>aside, &>dl {
+  &>form, &>h1, &>h2, &>h3, &>h4, &>p, &>table, &>ul, &>ol, &>aside, &>dl{
     margin-right: $examples-width;
     padding: 0 $main-padding;
     @include box-sizing(border-box);
@@ -343,7 +354,7 @@ body, html {
     margin-bottom: $h1-margin-bottom;
   }
   
-  h1:first-of-type {
+  h1:first-of-type, h2:first-of-type {
     margin-top: 12px;
   }
 
@@ -363,7 +374,7 @@ body, html {
     padding-top: 1.2em;
     padding-bottom: 1.2em;
   }
-
+  
   // h2s right after h1s should bump right up
   // against the h1s.
   h1 + h2, h1 + div + h2 {
@@ -460,12 +471,11 @@ body, html {
     @extend %break-words;
     @extend %code-font;
   }
+  pre code {
+    background-color: inherit;
+  }
 
   aside {
-    padding-top: 1em;
-    padding-bottom: 1em;
-    margin-top: 1.5em;
-    margin-bottom: 1.5em;
     background: $aside-notice-bg; 
     line-height: 1.7;
     font-weight: 400;
@@ -563,7 +573,7 @@ body, html {
     top: 0px;
     z-index: 1000;
   }
-
+  
   blockquote {
     border-top: 1em solid $examples-bg;
     &>p {
@@ -573,6 +583,12 @@ body, html {
       color: #ccc;
       //border-top: 1px solid #000;
       //border-bottom: 2px solid #404040;
+    }
+    a:first-child:before {
+      content: url('../images/lab.png');
+      position: relative;
+      top: 10px;
+      left: -6px;
     }
   }
 }
@@ -588,7 +604,7 @@ body, html {
   .showHideButton {
     position: absolute;
     margin: 0;
-    right: 20px;
+    right: -12px;
     padding: 0;
     width: 12px;
     height: 12px;

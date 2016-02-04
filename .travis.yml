@@ -11,13 +11,16 @@ notifications:
   email:
     - adrian.warman@uk.ibm.com
     - kim@cloudant.com
+    - lbboe@us.ibm.com
   on_success: always
 before_install:
 - sudo apt-get update
-- sudo apt-get install python python-pip
+- sudo apt-get install python python-pip jq perl aspell aspell-en curl
 - sudo pip install couchapp
 script:
+- ./scripts/spelling/spellcheck
 - bundle exec middleman build --verbose
+- mkdir couchapp/_attachments
 - cp -r build/* couchapp/_attachments
 - ./scripts/deploy.sh
 after_success:

@@ -4,16 +4,16 @@ Instead of storing data in a document,
 you might also have special documents that store other content, such as functions.
 The special documents are called "design documents".
 
-Design documents are [documents](#documents) that have an `_id` beginning with `_design/`. They can be read and updated in the same way as any other document in the database.
+Design documents are [documents](document.html) that have an `_id` beginning with `_design/`. They can be read and updated in the same way as any other document in the database.
 Cloudant reads specific fields and values of design documents as functions.
 Design documents are used to [build indexes](#indexes), [validate updates](#update-validators), and [format query results](#list-functions).
 
 ### Creating or updating a design document
 
--   **Method**: `GET /$DATABASE/_design/design-doc`
+-   **Method**: `PUT /$DATABASE/_design/design-doc`
 -   **Request**: JSON of the design document information
 -   **Response**: JSON status
--   **Roles permitted**: \_writer
+-   **Roles permitted**: \_admin
 
 To create a design document, upload it to the specified database.
 
@@ -193,7 +193,7 @@ using the `rev` query argument.
 
 ### Views
 
-An important use of design documents is for creating views. These are discussed in more detail [here](#creating-views).
+An important use of design documents is for creating views. These are discussed in more detail [here](creating_views.html).
 
 ### Rewrite rules
 
@@ -326,8 +326,8 @@ Each rule is a JSON object with 4 fields:
 All queries operate on pre-defined indexes defined in design documents.
 These indexes are:
 
-* [Search](#search)
-* [MapReduce](#creating-views)
+* [Search](search.html)
+* [MapReduce](creating_views.html)
 
 <!-- * [Geo](#geo) -->
 
@@ -336,12 +336,12 @@ to create a design document used for searching,
 you must ensure that two conditions are true:
 
 1. You have identified the document as a design document by having an `_id` starting with `_design/`.
-2. A [search index](#search) has been created within the document by [updating](#update) the document with the appropriate field or by [creating](#create) a new document containing the search index.
+2. A [search index](search.html) has been created within the document by [updating](document.html#update) the document with the appropriate field or by [creating](document.html#create) a new document containing the search index.
 
 As soon as the search index design document exists and the index has been built, you can make queries using it.
 
 For more information about search indexing,
-refer to the [search](#search) section of this documentation.
+refer to the [search](search.html) section of this documentation.
 
 #### General notes on functions in design documents
 
@@ -411,7 +411,7 @@ db.view_with_list($DESIGN_ID, $MAPREDUCE_INDEX, $LIST_FUNCTION, function (err, b
 });
 ```
 
-Use list functions to customize the format of [MapReduce](#using-views) query results.
+Use list functions to customize the format of [MapReduce](creating_views.html#using-views) query results.
 They are used when you want to access Cloudant directly from a browser, and need data to be returned in a different format, such as HTML.
 
 <aside>The result of a list function is not stored. This means that the function is executed every time a request is made.
@@ -427,7 +427,7 @@ In this request:
 * `$LIST_FUNCTION` is the name of list function you defined.
 * `$MAPREDUCE_INDEX` is the name of the index providing the query results you want to format.
 
-The other parameters are the same query parameters used in a [MapReduce query](#queries).
+The other parameters are the same query parameters described [here](cloudant_query.html#query-parameters).
 
 #### head
 
@@ -452,7 +452,7 @@ peer | Request source IP address.
 query | URL query parameters object. Note that multiple keys are not supported and the last key value suppresses others.
 requested_path | List of actual requested path section.
 raw_path | Raw requested path string.
-secObj | The database's [security object](#viewing-permissions)
+secObj | The database's [security object](authorization.html#viewing-permissions)
 userCtx | Context about the currently authenticated user, specifically their `name` and `roles` within the current database.
 uuid | A generated UUID
 
@@ -514,7 +514,7 @@ For web and mobile applications, consider whether any computations done in a sho
 
 Show functions receive two arguments: `doc`, and [req](#req). `doc` is the document requested by the show function.
 
-When you have defined a show function, you query it with a `GET` request to `https://$USERNAME.cloudant.com/$DATABASE/$DOCUMENT_ID/_show/$SHOW_FUNCTION/$DESIGN_ID`,
+When you have defined a show function, you query it with a `GET` request to `https://$USERNAME.cloudant.com/$DATABASE/$DESIGN_ID/_show/$SHOW_FUNCTION/$DOCUMENT_ID`,
 where `$SHOW_FUNCTION` is the name of the function that is applied to the document that has `$DESIGN_ID` as its `_id`.
 
 ### Update Handlers
@@ -577,7 +577,7 @@ db.atomic($DESIGN_ID, $UPDATE_HANDLER, $DOCUMENT_ID, $JSON, function (err, body)
 ```
 
 Update handlers are custom functions that live on Cloudant's server that will create or update a document.
-This can, for example, provide server-side modification timestamps, and document updates to individual fields without the latest revision. 
+This can, for example, provide server-side modification timestamps, and document updates to individual fields without the latest revision.
 
 Update handlers receive two arguments: `doc` and [req](#req).
 If a document ID is provided in the request to the update handler, then `doc` will be the document corresponding with that ID. If no ID was provided, `doc` will be `null`.
@@ -606,12 +606,10 @@ Where `$DESIGN_ID` is the `_id` of the document defining the update handler, `$U
 }
 ```
 
-Filter functions filter the [changes feed](#get-changes), removing changes you don't want to monitor.
+Filter functions filter the [changes feed](database.html#get-changes), removing changes you don't want to monitor.
 The filter function is run over every change in the changes feed, and only those for which the function returns `true` are returned to the client in the response.
 
 <div></div>
-
-###### h6
 
 > Example filter function:
 
@@ -632,8 +630,6 @@ function(doc, req){
 Filter functions receive two arguments: `doc` and [req](#req). `doc` represents the document being filtered and `req` contains information about the http request. In most cases, only the `doc` parameter will be used.
 
 <div></div>
-
-###### h6
 
 > Example query:
 
@@ -694,14 +690,14 @@ function(newDoc, oldDoc, userCtx, secObj) {
 ```
 
 Update validators evaluate whether a document should be written to disk when insertions and updates are attempted.
-They do not require a query because they implicitly run during this process. If a change is rejected, the update validator responds with a custom error. 
+They do not require a query because they implicitly run during this process. If a change is rejected, the update validator responds with a custom error.
 
 Update validators get four arguments:
 
 * `newDoc`: the version of the document passed in the request.
 * `oldDoc`: the version of the document currently in the database, or `null` if there is none.
 * `userCtx`: context about the currently authenticated user, such as `name` and `roles`..
-* `secObj`: the database's [security object](#viewing-permissions)
+* `secObj`: the database's [security object](authorization.html#viewing-permissions)
 
 ### Retrieving information about a design document
 

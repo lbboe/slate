@@ -1,0 +1,21 @@
+#!/bin/bash
+
+function preprocess {
+  tr '\n' ' ' | tr '#' ' ' | tr '*' ' ' | perl -pe 's|---.*?---||g' | tr '-' ' ' | perl -pe 's|```.*?```||g' | perl -pe 's|<script.*?</script>||g' | perl -pe 's|&nbsp;||g' | perl -pe 's|&lt;||g' | perl -pe 's|&gt;||g' | perl -pe 's|<code.*?</code>||g' | perl -pe 's|<form.*?</form>||g' | perl -pe 's|<style.*?</style>||g' | perl -pe 's|<[/a-zA-Z].*?>||g' | perl -pe 's|`.*?`||g' | perl -pe 's|]\(.*?\)| |g'
+}
+
+function checkFile {
+  cat "$1" | preprocess | aspell -a --encoding=utf-8 --lang=en-us --add-extra-dicts "$(dirname $0)/dictionary" | grep -v '^[\*@]' | grep -v '^$' | cut -f2 -d ' '
+}
+
+function changedFiles {
+  git show --pretty="format:" --name-only $(git rev-list HEAD | head -n 1 | tail -n 1) | grep '\.md$'
+}
+
+function allMdFiles {
+  find "$1" -iname '*.md'
+}
+
+function err {
+  echo "$@" 1>&2;
+}

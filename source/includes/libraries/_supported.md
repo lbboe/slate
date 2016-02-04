@@ -1,5 +1,5 @@
 ## Supported client libraries
-<div id="supported"></div>
+
 ### Mobile
 
 The Cloudant Sync library is used to store, index and query local JSON data on a mobile device.

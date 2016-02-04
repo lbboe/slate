@@ -1,0 +1,11 @@
+root: gem install bundler
+User: bundle install
+root: gem install libv8 -v '3.16.14.3' -- --with-system-v8
+User: bundle install
+root: gem uninstall libv8
+root: gem install therubyracer
+User: bundle install
+User: bundle update libv8
+
+rake build
+bundle exec middleman server

@@ -243,8 +243,6 @@ This means that it is possible to have empty view results because the sorting an
 
 <div></div>
 
-###### h6
-
 > Reversing the order of start and end key will not yield any results:
 
 ```http
@@ -260,8 +258,6 @@ The reason is that the entries in the view are reversed before the key filter is
 
 <div></div>
 
-###### h6
-
 > The view request returns no entries, because "alpha" is alphabetically before "beta". The returned result is empty:
 
 ```json
@@ -275,8 +271,6 @@ The reason is that the entries in the view are reversed before the key filter is
 Therefore the `endkey` of "beta" is seen before the `startkey` of "alpha", resulting in an empty list.
 
 <div></div>
-
-###### h6
 
 > Example of <i>correct</i> filtering and reversing the order of output by using the `descending` query argument, and reversing the `startkey` and `endkey` query arguments:
 
@@ -316,8 +310,6 @@ the `POST` method allows you to specify the keys to use when retrieving the view
 In all other aspects, the `POST` method is identical to the [`GET`](#querying-a-view) API request, in particular, you can use any of its query parameters.
 
 <div></div>
-
-###### h6
 
 The response contains the standard view information, but only where the keys match:
 

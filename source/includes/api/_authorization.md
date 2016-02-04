@@ -5,18 +5,16 @@ are permitted to perform certain tasks. This is called authorization.
 
 ### Roles
 
-Role               | Description
+Role&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Description
 -------------------|------------
-`_reader`          | Gives the user permission to read documents from the database.
-`_writer`          | Gives the user permission to create and modify documents in the database.
+`_reader`          | Gives the user permission to read documents (except design documents) from the database.
+`_writer`          | Gives the user permission to create, update, and delete documents (except design documents) in the database.
 `_admin`           | Gives the user all permissions, including setting permissions.
 `_replicator`      | Gives the user permission to replicate a database, including creating checkpoints.
 `_db_updates`      | Gives the user permission to use the global changes feed.
-`_design`          | Gives the user access to views and design documents.
+`_design`          | Gives the user permission to read design documents.
 `_shards`          | Gives the user access to the `/$DB/_shards` endpoint.
-`_security`        | Gives the user access to the `/$DB/_security` endpoint, letting them change roles of users.
-`_search_analyze`  | Gives the user access to the `/_search_analyze` endpoint
-
+`_security`        | Gives the user permission to read from the `/_api/v2/db/$DB/_security` endpoint
 
 The credentials you use to log in to the dashboard automatically have `_admin` permissions to all databases you create. Everyone and everything else, from users you share databases with to API keys you create, must be given a permission level explicitly.
 
@@ -47,11 +45,9 @@ account.request({
 });
 ```
 
-To see who has permissions to read, write, and manage the database, make a GET request against `https://$USERNAME.cloudant.com/$DB/_security`.
+To see who has permissions to read, write, and manage the database, make a GET request against `https://$USERNAME.cloudant.com/_api/v2/db/$DATABASE/_security`.
 
 <div></div>
-
-###### h6
 
 > Example response:
 
@@ -80,8 +76,12 @@ The `cloudant` field in the response object contains an object with keys that ar
 The `nobody` username indicates what rights are available to unauthenticated users -- that is, any request made without authentication credentials.
 In the example response, for instance, `nobody` has `_reader` permissions, making the database publicly readable.
 
-
 ### Modifying Permissions
+
+A video overview about changing database permissions is available:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/uxlbbdAvawU?rel=0" frameborder="0" allowfullscreen title="Changing database permissions, video overview"></iframe>
+
+<div></div>
 
 > Modification request:
 
@@ -139,8 +139,6 @@ The request object's `cloudant` field contains an object whose keys are username
 
 <div></div>
 
-###### h6
-
 > Example response:
 
 ```json
@@ -153,15 +151,37 @@ The response tells you whether the update has been successful.
 
 ### Creating API Keys
 
+<aside class="warning">The earlier method of generating API keys by `POST`ing to `https://cloudant.com/api/generate_api_key` is now deprecated.</aside>
+
+API keys allow you to give access to a person or application without having to create a new Cloudant account.
+An API key consists of a randomly generated username and password.
+The key is given the desired access permissions.
+Once generated,
+the API key can be used in the same way as a normal user account,
+for example by granting read,
+write,
+or admin access permissions.
+
+<aside class="warning">If you choose to generate an API key through the dashboard,
+remember to record the key name and password.
+These are both randomly generated,
+and cannot be retrieved if lost or forgotten.</aside>
+
+<aside class="warning">IBM Cloudant Data Layer Local Edition ("Cloudant Local") does not support API Keys.
+For a similar capability,
+create "CouchDB" style users,
+as described in the [IBM Knowledge Center](http://www-01.ibm.com/support/knowledgecenter/SSTPQH_1.0.0/com.ibm.cloudant.local.install.doc/topics/clinstall_db_security.html).</aside>
+
+<div></div>
+
 > Example request to create an API key:
 
 ```http
-POST /api/generate_api_key HTTP/1.1
-Host: cloudant.com
+POST https://<username>.cloudant.com/_api/v2/api_keys HTTP/1.1
 ```
 
 ```shell
-curl -X POST https://$USERNAME:$PASSWORD@cloudant.com/api/generate_api_key
+curl -X POST https://$USERNAME:$PASSWORD@cloudant.com/_api/v2/api_keys
 ```
 
 ```javascript
@@ -169,8 +189,8 @@ var nano = require('nano');
 var account = nano("https://$USERNAME:$PASSWORD@cloudant.com");
 
 account.request({
-  db: 'api',
-  path: 'generate_api_ket',
+  db: '_api',
+  path: 'v2/api_keys',
   method: 'POST'
 }, function (err, body) {
   if (!err) {
@@ -179,25 +199,24 @@ account.request({
 });
 ```
 
-API keys allow you to give access to a person or application without having to create a new Cloudant account. An API key consists of a randomly generated username and password. The key is given the desired access permissions. Once generated, the API key can be used in the same way as a normal user account, for example by granting read, write, or admin access permissions.
-
-<aside class="warning">IBM Cloudant Data Layer Local Edition ("Cloudant Local") does not support API Keys. For a similar capability, create "CouchDB" style users, as described in the [IBM Knowledge Center](http://www-01.ibm.com/support/knowledgecenter/SSTPQH_1.0.0/com.ibm.cloudant.local.install.doc/topics/clinstall_db_security.html).</aside>
-
-To generate an API key, use `https://cloudant.com/api/generate_api_key`. The created API key has no permissions to anything by default, and must be given permissions explicitly.
-
-<div></div>
-
-###### h6
-
-> Response body:
+> Example response:
 
 ```json
 {
-  "password": "generatedPassword",
-  "ok": true,
-  "key": "generatedKey"
+  "password": "YPNCaIX1sJRX5upaL3eqvTfi", 
+  "ok": true, 
+  "key": "blentfortedsionstrindigl"
 }
 ```
 
-The response contains the generated key and password.
+To generate an API key,
+use `https://<username>.cloudant.com/_api/v2/api_keys`.
+Next,
+assign the API key to a database by using a `PUT` request to `https://<username>.cloudant.com/_api/v2/db/<database>/_security`.
+Once assigned to a database,
+the key can be granted access permissions.
+By default,
+an API key has no permissions for anything,
+and must be given permissions explicitly.
 
+The response contains the generated key and password.

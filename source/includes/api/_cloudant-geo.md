@@ -8,6 +8,9 @@ Cloudant Geo:
 -   Integrates with existing GIS applications, so that they can scale to accommodate different data sizes, concurrent users, and multiple locations.
 -   Provides a NoSQL capability for GIS applications, so that large streams of data can be acquired from devices, sensors and satellites. This data can then be stored, processed, and syndicated across other web applications.
 
+This overview describes Cloudant Geospatial:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/bFa3uYGY2M0" frameborder="0" allowfullscreen title="Introducing Cloudant Geospatial"></iframe>
+
 ### Cloudant Geo overview
 
 Cloudant Geo lets you structure your data using GeoJSON\_ format. Design documents are used to index the data. Just like working with other Cloudant documents, an initial scan works through all the documents in the database, giving you the first index. Subsequent updates to the documents result in incremental updates to the index.
@@ -32,7 +35,7 @@ The basic steps for working with geospatial data in Cloudant Geo is as follows:
 
 ### GeoJSON
 
-GeoJSON format data is used to express a variety of geographic data structures, including:
+[GeoJSON format](http://geojson.org/geojson-spec.html) data is used to express a variety of geographic data structures, including:
 
 -   `Point`
 -   `LineString`
@@ -90,11 +93,14 @@ This section holds any other data you wish to store in the GeoJSON document. It 
 
 More information about GeoJSON, including the full specification, is available at <http://geojson.org/>.
 
-### Creating a Cloudant GEO Index
+### Creating a Cloudant Geo Index
 
 To make it easier to work with Cloudant Geo documents, it is best practice to create a separate design document, specifically for Cloudant Geo. For example, you could create a design document with the `_id` value `"_design/geodd"`.
 
 Within that design document, you create an object called `st_indexes` to hold one or more Cloudant Geo index definitions.
+
+This overview explains how to build and query a Cloudant Geospatial index:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/JqZOcp0pox4" frameborder="0" allowfullscreen title="Building and Querying a Cloudant Geospatial index"></iframe>
 
 #### `geoidx`: An example Cloudant Geo index
 
@@ -107,7 +113,8 @@ Within that design document, you create an object called `st_indexes` to hold on
   "language": "javascript",
   "st_indexes": {
     "geoidx": {
-  "index": "function(doc) {
+  "index": "function(doc)
+  {
       if (doc.geometry && doc.geometry.coordinates) {
         st_index(doc.geometry);
       }
@@ -155,29 +162,33 @@ The valid `<query-parameters>` are as follows:
 </tr>
 <tr class="even">
 <td align="left"><code>ellipse</code></td>
-<td align="left">Used in a query. Specify a latitude, a longitude, and two radii: <code>rangex</code> and <code>rangey</code>. The distance is measured in meters.</td>
+<td align="left">Specify a latitude, a longitude, and two radii: <code>rangex</code> and <code>rangey</code>. The distance is measured in meters.</td>
 </tr>
 <tr class="odd">
-<td align="left"><code>g</code></td>
-<td align="left">Used in a query. Specify a geometry value <code>g</code>. Requires a geometric relationship <code>relation</code>.</td>
+<td align="left"><code>format=geojson</code></td>
+<td align="left">Causes the output of the query to be in <a href="http://geojson.org/geojson-spec.html">GeoJSON format</a>. If this parameter is omitted, the default format is standard Cloudant output.</td>
 </tr>
 <tr class="even">
+<td align="left"><code>g</code></td>
+<td align="left">Specify a geometry value <code>g</code>. Requires a geometric relationship <code>relation</code>.</td>
+</tr>
+<tr class="odd">
 <td align="left"><code>include_docs</code></td>
 <td align="left">Add the entire document as a document object, and include it in the output results.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><code>limit</code></td>
 <td align="left">An integer to limit the number of results returned. The default is 100. The maximum is 200. A value larger than 200 is an error.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><code>radius</code></td>
-<td align="left">Query. Specify a latitude, a longitude, and a radius. The distance is measured in meters.</td>
+<td align="left">Specify a latitude, a longitude, and a radius. The distance is measured in meters.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>relation</code></td>
+<td align="left">Specify a geometric relationship. Used in conjunction with <code>ellipse</code>, <code>g</code>, or <code>radius</code> parameters.</td>
 </tr>
 <tr class="odd">
-<td align="left"><code>relation</code></td>
-<td align="left">Used in a query. Specify a geometric relationship. Used in conjunction with <code>ellipse</code>, <code>g</code>, or <code>radius</code> parameters.</td>
-</tr>
-<tr class="even">
 <td align="left"><code>stale=ok</code></td>
 <td align="left">Speed up responses by not waiting for index building or update to complete.</td>
 </tr>
@@ -296,6 +307,9 @@ There are several standard geometric objects, including:
 
 ### Example: Querying a Cloudant Geo index
 
+<br>This overview shows an example of how Cloudant Geospatial works:</br>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/o683QPKFEa4" frameborder="0" allowfullscreen title="Cloudant Geospatial in action"></iframe>
+
 #### Simple circle
 
 > Example query to find documents that have a geospatial position within a circle:
@@ -306,6 +320,7 @@ https://sampleac.cloudant.com/sampledb/_design/geodd/_geo/geoidx
 &lon=-71.07959
 &lat=42.3397
 &relation=contains
+&format=geojson
 ```
 
 > Example response to the query:
@@ -348,6 +363,7 @@ A more complex example is where you specify a polygon as the geomtric object of 
 ```
 https://sampleac.cloudant.com/sampledb/_design/geodd/_geo/geoidx
 ?relation=overlaps
+&format=geojson
 &g=POLYGON ((-71.0537124 42.3681995 0,-71.054399 42.3675178 0,-71.0522962 42.3667409 0,-71.051631 42.3659324 0,-71.051631 42.3621431 0,-71.0502148 42.3618577 0,-71.0505152 42.3660275 0,-71.0511589 42.3670263 0,-71.0537124 42.3681995 0))
 ```
 

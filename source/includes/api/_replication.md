@@ -7,7 +7,10 @@ You can create replications between any number of databases, whether continuous 
 Depending on your application requirements, you use replication to share and aggregate state and content.
 
 This overview explains how replication works:<br/>
-<iframe width="280" height="158" src="https://www.youtube.com/embed/OPW8bomFcDY?rel=0" frameborder="0" allowfullscreen></iframe>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/OPW8bomFcDY?rel=0" frameborder="0" allowfullscreen title="Replication overview video"></iframe>
+
+This video shows you how to replicate a Cloudant sample database:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/TDvzZ887tGI?rel=0" frameborder="0" allowfullscreen title="Video showing how to replicate a sample database"></iframe>
 
 Replication takes place in one direction only.
 To keep two databases synchronized with each other, you must replicate in both directions.
@@ -28,17 +31,18 @@ Replications are created in one of two ways:
 
 The format of the document used to describe a replication is as follows:
 
-Field Name | Required | Description
+Field&nbsp;Name | Required | Description
 -----------|----------|-------------
 `source` | yes | Identifies the database to copy revisions from. Can be a database URL, or an object whose url property contains the full URL of the database.
 `target` | yes | Identifies the database to copy revisions to. Same format and interpretation as source. Does not have to be the same value as the `source` field.
 `continuous` | no | Continuously syncs state from the `source` to the `target`, only stopping when deleted.
 `create_target` | no | A value of `true` tells the replicator to create the `target` database if it does not exist.
 `doc_ids` | no | Array of document IDs; if given, only these documents are replicated.
-`filter` | no | Name of a [filter function](#filter-functions) that can choose which documents get replicated.
+`filter` | no | Name of a [filter function](design_documents.html#filter-functions) that can choose which documents get replicated.
 `proxy` | no | Proxy server URL.
-`query_params` | no | Object containing properties that are passed to the filter function.
+`query_params` | no | Object containing properties that are passed to the [filter function](design_documents.html#filter-functions).
 <div id="checkpoints">`use_checkpoints`</div> | no | Indicate whether to create checkpoints. Checkpoints greatly reduce the time and resources needed for repeated replications. Setting this to `false` removes the requirement for write access to the `source` database. Defaults to `true`.
+`user_ctx` | no | An object containing the username and optionally an array of roles, e.g.: `"user_ctx": {"name": "jane", "roles": ["admin"]} `. This is needed for the replication to show up in the output of `/_active_tasks`.
 
 ### The `/_replicator` database
 
@@ -48,7 +52,7 @@ Replication documents can have a user defined `_id`.
 
 The names of the source and target databases do not have to be the same.
 
-<aside class="notify">All design documents and `_local` documents added to the `/_replicator` database are ignored.</aside>
+<aside class="warning">All design documents and `_local` documents added to the `/_replicator` database are ignored.</aside>
 
 #### Creating a replication
 
@@ -78,10 +82,10 @@ Content-Type: application/json
 To start a replication, [add a replication document](#replication-document-format) to the `_replicator` database.
 
 This overview explains how to create a replication job:<br/>
-<iframe width="280" height="158" src="https://www.youtube.com/embed/GmZ3HrwMhO4?rel=0" frameborder="0" allowfullscreen></iframe>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/GmZ3HrwMhO4?rel=0" frameborder="0" allowfullscreen title="Replication creation video"></iframe>
 
 You can set up replication using cURL:<br/>
-<iframe width="280" height="158" src="https://www.youtube.com/embed/sQ3ldxOhpWM?rel=0" frameborder="0" allowfullscreen></iframe>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/sQ3ldxOhpWM?rel=0" frameborder="0" allowfullscreen title="Replication creation using curl video"></iframe>
 
 <h3></h3>
 
@@ -169,9 +173,9 @@ To monitor replicators currently in process, make a `GET` request to `https://$U
 This returns any active tasks, including replications. To filter for replications, look for documents with `"type": "replication"`.
 
 This overview explains how to check replication status:<br/>
-<iframe width="280" height="158" src="https://www.youtube.com/embed/TIXpJmmqP6Y?rel=0" frameborder="0" allowfullscreen></iframe>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/TIXpJmmqP6Y?rel=0" frameborder="0" allowfullscreen title="Replication status check video"></iframe>
 
-For details about the information provided by `_active_tasks`, see [Active tasks](#active-tasks).
+For details about the information provided by `_active_tasks`, see [Active tasks](active_tasks.html).
 
 <h3></h3>
 
@@ -189,7 +193,7 @@ curl -X DELETE https://$USERNAME:$PASSWORD@$USERNAME.cloudant.com/_replicator/re
 
 To cancel a replication, simply [delete its replication document](#document-delete) from the `_replicator` database.
 
-If the replication is in an [`error` state](#replication-status), the replicator makes repeated attempts to achieve a successful replication. A consequence is that the replication document is updated with each attempt. This also changes the document revision value. Therefore, you should get the revision value immediately before deleting the document, otherwise you might get an [HTTP 409 "document update conflict"](api.html#409) response.
+If the replication is in an [`error` state](#replication-status), the replicator makes repeated attempts to achieve a successful replication. A consequence is that the replication document is updated with each attempt. This also changes the document revision value. Therefore, you should get the revision value immediately before deleting the document, otherwise you might get an [HTTP 409 "document update conflict"](http.html#409) response.
 
 ### The /\_replicate endpoint
 

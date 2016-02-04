@@ -8,6 +8,11 @@ with Cloudant: Basic authentication and Cookie authentication.
 Basic authentication is similar to showing an ID at a door for checking every time you want to enter.
 Cookie authentication is similar to having a key to the door so that you can let yourself in whenever you want. The key is a cookie named `AuthSession`.
 
+<aside class="notice">When creating or using performance critical Cloudant applications,
+Cookie authentication has benefits compared with Basic authentication.
+Therefore,
+you should prefer Cookie authentication where possible.</aside>
+
 ### Basic Authentication
 
 > Example of providing basic authentication credentials in a request:
@@ -120,8 +125,6 @@ Do this by sending a `POST` request to `/_session`.
 
 <div></div>
 
-###### h6
-
 > Reply to request for a cookie
 
 ```
@@ -167,8 +170,6 @@ When a cookie has been set, information about the logged in user can be retrieve
 
 <div> </div>
 
-###### h6
-
 > Example response to request for cookie information.
 
 ```json
@@ -188,7 +189,8 @@ When a cookie has been set, information about the logged in user can be retrieve
 
 The response contains the username, the user's roles and which authentication mechanism was used.
 
-<h3></h3>
+<div></div>
+
 #### Deleting a cookie
 
 > Example cookie `DELETE` request:
@@ -207,9 +209,7 @@ curl https://$USERNAME.cloudant.com/_session \
 
 You can end the session by sending a `DELETE` request to the same URL used to create the cookie. The `DELETE` request must include the cookie you wish to delete.
 
-<div> </div>
-
-###### h6
+<div></div>
 
 > Example response to cookie `DELETE` request:
 

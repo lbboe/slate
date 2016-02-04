@@ -15,9 +15,15 @@ If you want to work on the docs locally, install [Ruby](https://www.ruby-lang.or
     bundle install
     bundle exec middleman server
 
-Now, your docs are live at <http://localhost:4567/>.
+Alternatively, you can use Vagrant and Virtualbox to set up a development environment. Once Vagrant and Virtualbox have been installed, run
 
-Note that the search bar will not work locally because it uses Cloudant's search handler, so to work it must run on Cloudant.
+    git clone git@github.com:cloudant-labs/slate.git
+    cd slate
+    sudo vagrant up
+
+In both cases, your docs site will be reachable at <http://localhost:4567/>.
+
+Note that the search bar will not work locally because it uses Cloudant's search handler.
 
 ## Contribute
 

@@ -1,5 +1,5 @@
 ---
-title: Cloudant Documentation
+title: Cloudant Documentation - API Basics
 
 language_tabs:
   - http 
@@ -19,7 +19,12 @@ includes:
 
 ---
 
-Next: [Libraries](libraries.html#-client-libraries)
+<style>
+.content h2 {
+  padding-top: 4em !important;
+  margin-top: 0 !important;
+}
+</style>
 
 
 

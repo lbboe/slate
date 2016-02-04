@@ -1,11 +1,11 @@
 ## Databases
 
 Cloudant databases contain JSON objects.
-These JSON objects are called [documents](#documents).
+These JSON objects are called [documents](document.html#documents).
 All documents must be contained in a database.
 
 You interact with Cloudant databases and documents using API commands, as this overview explains:<br/>
-<iframe width="280" height="158" src="https://www.youtube.com/embed/47qQMaYJVUU?rel=0" frameborder="0" allowfullscreen></iframe>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/47qQMaYJVUU?rel=0" frameborder="0" allowfullscreen title="API overview video"></iframe>
 
 ### Create
 
@@ -52,7 +52,12 @@ PUT /$DATABASE?n=2&q=32 HTTP/1.1
 HOST: $ACCOUNT.cloudant.com
 ```
 
-There are two configuration parameters that control the sharding topology of a database. The defaults are specified in the server configuration and may be overridden at database creation time on dedicated database clusters. N specifies the number of replicas of each document, while Q fixes the number of partitions of the database. On multi-tenant clusters, the default can not be overwritten.
+There are two configuration parameters that control the sharding topology of a database.
+The defaults are specified in the server configuration and may be overridden at database creation time on dedicated database clusters.
+`n` specifies the number of replicas of each document,
+while `q` fixes the number of partitions of the database.
+On multi-tenant clusters,
+the defaults can not be overwritten.
 
 Parameter | Description | Default
 ----------|-------------|----------
@@ -71,7 +76,9 @@ HTTP/1.1 201 Created
 }
 ```
 
-If creation succeeds, you get a 201 or 202 response. In case of an error, the HTTP status code tells you what went wrong.
+If creation succeeds, you get a [201 or 202 response](http.html#201).
+In case of an error,
+the HTTP status code tells you what went wrong.
 
 Code | Description
 -----|--------------
@@ -107,8 +114,7 @@ account.db.get($DATABASE, function (err, body, headers) {
 Making a GET request against `https://$USERNAME.cloudant.com/$DATABASE` returns details about the database,
 such as how many documents it contains.
 
-
-###### h6
+<div></div>
 
 > Example response:
 
@@ -171,7 +177,7 @@ account.db.list(function (err, body, headers) {
 To list all the databases in an account,
 make a GET request against `https://$USERNAME.cloudant.com/_all_dbs`.
 
-###### h6
+<div></div>
 
 > Example response:
 
@@ -188,6 +194,9 @@ make a GET request against `https://$USERNAME.cloudant.com/_all_dbs`.
 The response is an array with all database names.
 
 ### Get Documents
+
+A video explaining how to get all documents from a Cloudant database is available here:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/Zoaifed-fWQ?rel=0" frameborder="0" allowfullscreen title="Using the primary index, overview video"></iframe>
 
 > Getting all documents in a database
 
@@ -213,7 +222,7 @@ db.list(function (err, body, headers) {
 
 To list all the documents in a database, make a GET request against `https://$USERNAME.cloudant.com/$DATABASE/_all_docs`.
 
-The method accepts these query arguments:
+The `_all_docs` endpoint accepts these query arguments:
 
 Argument | Description | Optional | Type | Default
 ---------|-------------|----------|------|--------
@@ -226,7 +235,9 @@ Argument | Description | Optional | Type | Default
 `skip` | Skip this number of records before starting to return the results | yes | numeric | 0
 `startkey` | Return records starting with the specified key | yes | string |
 
-###### h6
+<aside class="warning">Note that using `include_docs=true` might have [performance implications](creating_views.html#include_docs_caveat).</aside>
+
+<div></div>
 
 > Example response:
 
@@ -289,6 +300,52 @@ account.db.changes($DATABASE, function (err, body, headers) {
 });
 ```
 
+Making a GET request against `https://$USERNAME.cloudant.com/$DATABASE/_changes` returns a list of changes made to documents in the database,
+including insertions,
+updates,
+and deletions.
+
+When a `_changes` request is received,
+one replica of each shard of the database is asked to provide a list of changes.
+These responses are combined and returned to the orginal requesting client.
+
+`_changes` accepts these query arguments:
+
+Argument | Description | Supported Values | Default 
+---------|-------------|------------------|---------
+`descending` | Return the changes in sequential order | boolean | false | 
+`feed` | Type of feed | `"continuous"`, `"longpoll"`, `"normal"` | `"normal"`
+`filter` | Name of filter function from a design document to get updates | string | no filter
+`heartbeat` | Time in milliseconds after which an empty line is sent during longpoll or continuous if there have been no changes | any positive number | no heartbeat | 
+`include_docs` | Include the document with the result | boolean | false |
+`limit` | Maximum number of rows to return | any non-negative number | none |  
+`since` | Start the results from changes _after_ the specified sequence identifier. In other words, using `since` excludes from the list all changes up to and including the specified sequence identifier. If `since` is 0 (the default), or omitted, the request returns all changes. | string | 0 | 
+`style` | Specifies how many revisions are returned in the changes array. The default, `main_only`, only returns the current "winning" revision; `all_docs` returns all leaf revisions, including conflicts and deleted former conflicts. | `main_only`, `all_docs` | `main_only` | 
+`timeout` | Number of milliseconds to wait for data before terminating the response. If heartbeat supersedes timeout if both are supplied. | any positive number | |
+
+<aside class="warning">Note that using `include_docs=true` might have [performance implications](creating_views.html#include_docs_caveat).</aside>
+
+All arguments are optional.
+
+The `feed` argument changes how Cloudant sends the response.
+By default,
+`_changes` reports all changes,
+then the connection closes.
+
+If you set `feed=longpoll`,
+requests to the server remain open until changes are reported.
+This can help monitor changes specifically instead of continuously.
+
+If you set `feed=continuous`,
+new changes are reported without closing the connection.
+In this mode,
+the format of the report entries reflects the continuous nature of the changes,
+while ensuring validity of the JSON output.
+
+The `filter` parameter designates a pre-defined [filter function](design_documents.html#filter-functions) to apply to the changes feed.
+
+<div id="changes_responses"></div>
+
 > Example response:
 
 ```
@@ -304,6 +361,35 @@ account.db.changes($DATABASE, function (err, body, headers) {
   "pending": 0
 }
 ```
+
+The response is a JSON object containing a list of the changes made to documents within the database.
+The following table describes the meaning of the individual fields:
+
+Field | Description | Type
+------|-------------|------
+`changes` | Array, listing the changes made to the specific document. | Array
+`deleted` | Boolean indicating if the corresponding document was deleted. If present, it always has the value `true`. | Boolean
+`id` | Document identifier | String
+`last_seq` | Identifier of the last of the sequence identifiers. Currently this is the same as the sequence identifier of the last item in the `results`. | String
+`results` | Array of changes made to the database. | Array
+`seq` | Update sequence identifier | String
+
+When using `_changes`,
+you should be aware that:
+
+-	If a `since` value is specified, only changes that have arrived in the specified replicas of the shards are returned in the response.
+-	If the specified replicas of the shards in any given `since` value are unavailable, alternative replicas are selected, and the last known checkpoint between them is used. If this happens, you might see changes again that you have previously seen. Therefore, an application making use of the `_changes` feed should be '[idempotent](http://www.eaipatterns.com/IdempotentReceiver.html)', that is, able to receive the same data multiple times, safely.
+-	The results returned by `_changes` are partially ordered. In other words, the order is not guaranteed to be preserved for multiple calls. You might decide to get a current list using `_changes` which includes the [`last_seq` value](database.html#changes_responses), then use this as the starting point for subsequent `_changes` lists by providing the `since` query argument.
+-	Although shard copies of the same range contain the same data, their `_changes` history is often unique. This is a result of how writes have been applied to the shard. For example, they may have been applied in a different order. To be sure all changes are reported for your specified sequence, it might be necessary to go further back into the shard's history to find a suitable starting point from which to start reporting the changes. This might give the appearance of duplicate updates, or updates that seem to be 'before' the specified `since` value.
+
+`_changes` from each shard are always presented in order.
+But the ordering between all the contributing shards might appear to be different.
+For more information,
+see [this example](https://gist.github.com/smithsz/30fb97662c549061e581).
+
+<div></div>
+
+##### Continuous feed
 
 > Example response, continuous changes feed:
 
@@ -340,32 +426,11 @@ account.db.changes($DATABASE, function (err, body, headers) {
 }
 ```
 
-Making a GET request against `https://$USERNAME.cloudant.com/$DATABASE/_changes` returns a list of changes made to documents in the database, including insertions, updates, and deletions. This log [might not be in chronological order](http://en.wikipedia.org/wiki/Clock_synchronization#Problems).
+If you request `feed=continuous`,
+the database connection stays open until explicitly closed.
+All changes are returned to the client as soon as possible after they occur.
 
-`_changes` accepts these query arguments:
-
-Argument | Description | Supported Values | Default 
----------|-------------|------------------|---------
-`descending` | Return the changes in sequential order | boolean | false | 
-`doc_ids` | List of documents IDs to use to filter updates | array of strings with valid document IDs | all documents
-`feed` | Type of feed | `"continuous"`, `"longpoll"`, `"normal"` | `"normal"`
-`filter` | Name of filter function from a design document to get updates | string | no filter
-`heartbeat` | Time in milliseconds after which an empty line is sent during longpoll or continuous if there have been no changes | any positive number | 60000 | 
-`include_docs` | Include the document with the result | boolean | false |
-`limit` | Maximum number of rows to return | any non-negative number | none |  
-`since` | Start the results from changes after the specified sequence number. If since is 0 (the default), the request will return all changes. | string | 0 | 
-`style` | Specifies how many revisions are returned in the changes array. The default, `main_only`, only returns the current "winning" revision; `all_docs` returns all leaf revisions, including conflicts and deleted former conflicts. | `main_only`, `all_docs` | `main_only` | 
-`timeout` | Number of milliseconds to wait for data before terminating the response. If heartbeat supersedes timeout if both are supplied. | any positive number | |
-
-All arguments are optional.
-
-The `feed` argument changes how Cloudant sends the response. By default, changes feed in entirety and the connection closes.
-
-If you set `feed=longpoll`, requests to the server remain open until changes are reported. This can help monitor changes specifically instead of continuously.
-
-If you set `feed=continuous`, new changes send without closing the connection. In this mode the format of changes accomodates the continuous nature while ensuring validity of the JSON output.
-
-The `filter` parameter designates a pre-defined [function to filter](#filter-functions) the changes feed.
+Each line in the continuous response is either empty or a JSON object representing a single change.
 
 ### Delete
 
@@ -397,7 +462,7 @@ To delete a databases and its contents, make a DELETE request to `https://$USERN
 
 <aside class="warning">There is no additional check to ensure that you really intended to delete the database ("Are you sure?").</aside>
 
-###### h6
+<div></div>
 
 > Example response:
 

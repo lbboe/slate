@@ -8,7 +8,10 @@ Examples of BLObs would be images and multimedia.
 
 The content type corresponds to a [MIME type][mime].
 For example, if you want to attach a `.jpg` image file to a document,
-you would specify the attachment MIME type as `image/jpeg`.
+you specify the attachment MIME type as `image/jpeg`.
+
+
+<aside class="warning">As a best practice, keep attachments small in size and number because attachments can impact performance.</aside>
 
 ### Create / Update
 
@@ -34,7 +37,7 @@ var db = account.use($DATABASE);
 
 fs.readFile($FILEPATH, function (err, data) {
   if (!err) {
-    db.attachment.insert($DOCUMENT_ID, $ATTACHMENT, data, $ATTACHMENT_MIME_TYPE, { 
+    db.attachment.insert($DOCUMENT_ID, $ATTACHMENT, data, $ATTACHMENT_MIME_TYPE, {
       rev: $REV
     }, function (err, body) {
       if (!err)
@@ -49,7 +52,7 @@ include the attachment as an '[inline](#inline)' component of the JSON content.
 
 To create a new attachment on an existing document,
 or to update an attachment on a document,
-make a PUT request with the document's latest `_rev` to `https://$USERNAME.cloudant.com/$DATABASE/$DOCUMENT_ID/$ATTACHMENT`. 
+make a PUT request with the document's latest `_rev` to `https://$USERNAME.cloudant.com/$DATABASE/$DOCUMENT_ID/$ATTACHMENT`.
 The attachment's [content type][mime] must be specified using the `Content-Type` header.
 The `$ATTACHMENT` value is the name by which the attachment is associated with the document.
 
@@ -57,8 +60,6 @@ The `$ATTACHMENT` value is the name by which the attachment is associated with t
 simply ensure that the `$ATTACHMENT` value for each attachment is unique within the document.</aside>
 
 <div></div>
-
-###### h6
 
 > Example response:
 
@@ -133,8 +134,6 @@ If you do not supply the latest `_rev`,
 the response is a [409 error](basics.html#http-status-codes).
 
 <div></div>
-
-###### h6
 
 > Example response:
 

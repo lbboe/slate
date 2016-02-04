@@ -107,10 +107,7 @@ curl https://$USERNAME:$PASSWORD@$USERNAME.cloudant.com/_api/v2/user/config/cors
 
 `PUT`ting a json document with the example structure to `/_api/v2/user/config/cors` sets the CORS configuration. The configuration applies to all databases and all account level endpoints in your account.
 
-
 <div></div>
-
-###### h6
 
 > Example response
 
@@ -135,9 +132,7 @@ curl https://$USERNAME:$PASSWORD@$USERNAME.cloudant.com/_api/v2/user/config/cors
 
 `GET`ting `/_api/v2/user/config/cors` ...
 
-<div> </div>
-
-###### h6
+<div></div>
 
 > Example response
 

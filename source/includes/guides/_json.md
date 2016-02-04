@@ -7,7 +7,7 @@ This is because JSON structures can be evaluated and used as JavaScript objects 
 
 <aside class="warning">Care should be taken to ensure that:
 
--  Your JSON structures are valid. Invalid structures cause Cloudant to return an HTTP status code of [400 (bad request)](api.html#400).
+-  Your JSON structures are valid. Invalid structures cause Cloudant to return an HTTP status code of [400 (bad request)](http.html#400).
 -  You normalize strings in JSON documents retrieved from Cloudant, before you compare them. This is because Unicode normalization might have been applied, so that a string stored and then retrieved is not identical on a binary level.
 
 </aside>

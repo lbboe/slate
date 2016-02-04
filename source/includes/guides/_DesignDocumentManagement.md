@@ -7,7 +7,7 @@ Cloudant's scalable JSON data store has several querying mechanisms, all of whic
 -	MapReduce views are indexes into the dataset with key value pairs stored in a BTree for efficient retrieval by key or range of keys
 -	Search Indexes are constructed using Apache Lucene to allow free-text search, faceting and complex ad-hoc queries
 
-Cloudant's [search indexes](api.html#search) and [MapReduce views](api.html#using-views) are configured by adding Design Documents to a database. Design Documents are JSON documents which contain the instructions on how the view or index is to be built. Let's take a simple example. Assume we have a document like this:
+Cloudant's [search indexes](search.html) and [MapReduce views](using_views.html) are configured by adding Design Documents to a database. Design Documents are JSON documents which contain the instructions on how the view or index is to be built. Let's take a simple example. Assume we have a document like this:
 
 <div></div>
 
@@ -67,7 +67,7 @@ Once the Design Document is saved, Cloudant triggers server-side processes to bu
 
 It's worth remembering at this point that:
 
--	The construction of an index happens asynchronously. Cloudant confirms that our Design Document has been saved, but to check on the progress on the construction of our index, we have to poll Cloudant's [\_active\_tasks](api.html#misc) endpoint.
+-	The construction of an index happens asynchronously. Cloudant confirms that our Design Document has been saved, but to check on the progress on the construction of our index, we have to poll Cloudant's [\_active\_tasks](active_tasks.html) endpoint.
 -	The more data we have, the longer it takes before the index is ready.
 -	While the initial index build is in progress, **any queries made against that index block**.
 -	Querying a view triggers the 'mapping' of any documents that haven't yet been incrementally indexed. This ensures we get an up-to-date view of the data. (See [The '`stale`' parameter](#stale) discussion, below, for exceptions to this rule.)
@@ -78,7 +78,7 @@ If we define several views in the same design document, then they are built effi
 
 If MapReduce views must be altered independently of each other, place their definitions in separate design documents. 
 
-<aside class="note">This behaviour does not apply to Lucene search indexes. They can be altered within the same design document without invalidating other unchanged indexes in the same document.</aside>
+<aside class="warning">This behaviour does not apply to Lucene search indexes. They can be altered within the same design document without invalidating other unchanged indexes in the same document.</aside>
 
 ![Illustration of Design Document version change](images/DesDocMan02.png)
 

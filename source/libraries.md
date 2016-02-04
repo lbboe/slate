@@ -21,4 +21,9 @@ includes:
 
 ---
 
-Next: [API Reference](api.html#-api-reference)
+<style>
+.content h2 {
+  padding-top: 4em !important;
+  margin-top: 0 !important;
+}
+</style>

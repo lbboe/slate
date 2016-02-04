@@ -7,7 +7,7 @@ $(function () {
   }
 
   var typeahead_opts = {
-    minLength: 3,
+    minLength: 1,
     highlight: true
   };
 

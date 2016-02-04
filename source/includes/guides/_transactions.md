@@ -47,7 +47,7 @@ In the case of the shopping app, instead insert documents like the examples prov
 }
 ```
 
-`item` and `account` are IDs for other objects in your database. To calculate a running total for an account, we would use a [view](api.html#creating-views) like the example provided.
+`item` and `account` are IDs for other objects in your database. To calculate a running total for an account, we would use a [view](creating_views.html) like the example provided.
 
 Calling this view with the `group=true&key={account}` options gives you a running balance for a particular account. To give refunds, insert a document with values to balance out the transaction.
 
@@ -159,4 +159,4 @@ A `_view/transactions?key={transaction_id}&include_docs=true` query retrieves ev
 ```
 The `dbcopy` map can be used to migrate data into events, and then output them to another database, in order to better accommodate event sourcing.
 
-A document can be mapped into another database using a [view](api.html#creating-views). The mapping also generates a document in the events database.
+A document can be mapped into another database using a [view](creating_views.html). The mapping also generates a document in the events database.

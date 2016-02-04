@@ -1,18 +1,36 @@
-Cloudant Query
---------------
+## Query
 
-The Cloudant Query endpoints can be used to create, list, update, and delete indexes in a database and to query data using these indexes.
+Cloudant Query is a declarative JSON querying syntax for Cloudant databases.
+Cloudant Query wraps several index types, starting with the Primary Index out-of-the-box.
+Cloudant Query indexes can also be built using MapReduce Views (where the index type is `json`),
+and Search Indexes (where the index type is `text`).
 
-A list of the available methods and endpoints is provided below:
+If you know exactly what data you want to look for,
+or you want to keep storage and processing requirements to a minimum,
+you can specify how the index is created,
+by making it of type `json`.
 
-Method | Path | Description
--------|------|------------
-POST | /db/_index | Create a new index
-GET | /db/_index | List all indexes
-DELETE | /db/_index | Delete an index
-POST| /db/_find | Find documents using an index
+But for maximum possible flexibility when looking for data,
+you would typically create an index of type `text`.
+Indexes of type `text` have a simple mechanism for automatically indexing all the fields in the documents.
 
-### Creating a new index
+<aside class="warning">While more flexible,
+`text` indexes might take longer to create and require more storage resources than `json` indexes.</aside>
+
+This overview explains how to create indexes and queries:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/aKnK8MuThjM" frameborder="0" allowfullscreen title="Introducing the New Cloudant Query"></iframe>
+
+### Creating an index
+
+You can create an index with one of two types:
+
+-	`"type": "json"`
+-	`"type": "text"`
+
+This overview explains how to build and query data using Cloudant Query:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/Y-MFcqFHe4I" frameborder="0" allowfullscreen title="Building and Querying using Cloudant Query"></iframe>
+
+#### Creating a "type=json" index
 
 > Example of creating a new index for the field called `foo`:
 
@@ -47,20 +65,183 @@ Content-Type: application/json
 
 Creates a new index in the specified database using the information supplied in the request body.
 
-#### Request Body
+##### Request Body
 
 -   **index**:
     -   **fields**: A JSON array of field names following the [sort syntax](#sort-syntax). Nested fields are also allowed, e.g. `"person.name"`.
 -   **ddoc (optional)**: Name of the design document in which the index will be created. By default, each index will be created in its own design document. Indexes can be grouped into design documents for efficiency. However, a change to one index in a design document will invalidate all other indexes in the same document.
--   **type (optional)**: Defaults to json, which is currently the only supported type. Full text indexes and geospatial indexes will be provided in the future.
+-   **type (optional)**: Can be ``"json"`` or ``"text"``. Defaults to json. Geospatial indexes will be supported in the future.
 -   **name (optional)**: Name of the index. If no name is provided, one will be generated automatically.
 
-#### Return Codes
+##### Return Codes
 
 Code | Description
 -----|------------
 200 | Index has been created successfully or already existed
 400 | Bad request: the request body does not have the specified format
+
+#### Creating a "type=text" index
+
+> Example index creation request
+
+```json
+{
+  "type": "text",
+  "name": "my-index",
+  "ddoc": "my-index-design-doc",
+  "index": {
+    "default_field": {
+      "enabled": true,
+      "analyzer": "german"
+    }
+    "selector": {},
+    "fields": [
+      {"name": "married", "type": "boolean"},
+      {"name": "lastname", "type": "string"},
+      {"name": "year-of-birth", "type": "number"}
+    ]
+  }
+}
+```
+
+While it is generally recommended that you create a single text index with the default values,
+there are a few useful index attributes that can be modified.
+
+Remember that for Full Text Indexes (FTIs),
+`type` should be set to `text`.
+
+The `name` and `ddoc` attributes are for grouping indexes into design documents,
+and allowing you to refer to them by a custom string value.
+If no values are supplied for these fields,
+they are automatically populated with a hash value.
+
+If you create multiple text indexes in a database,
+with the same `ddoc` value,
+you need to know at least the `ddoc` value as well as the `name` value.
+Creating multiple indexes with the same `ddoc` value places them into the
+same design document. Generally, you should put each text index into its own design document.
+
+<!--
+"w": "2",
+The `w` value affects the consistency of the index creation operation. In general use, you
+shouldn't have to worry about this, but if you create test or example scripts that attempt to use
+the index immediately after use, it can be useful to set this to `3`, so that a complete quorum is
+used for the creation. It does not affect anything other than index creation.
+-->
+<div></div>
+##### The `index` field
+
+> Example index creation request to index all fields in all documents
+
+```json
+{
+  "type": "text",
+  "index": {}
+}
+```
+
+The `index` field contains settings specific to text indexes.
+
+To index all fields in all documents automatically,
+use the simple syntax:
+
+  `"index": {}`
+
+The indexing process traverses all of the fields in all the documents in the database.
+
+An example of creating a text index for all fields in all documents in a database is [available](cloudant-query.html#example:-movies-demo-database).
+
+<aside class="warning">Caution should be taken when indexing all fields in all documents for large data sets,
+as it might be a very resource-consuming activity.</aside>
+
+##### The `default_field` field
+
+The `default_field` value specifies how the `$text` operator can be used with the index.
+If the `default_field` is not specified,
+it defaults to `true` and the standard analyzer is used.
+
+The `analyzer` key in the `default_field` specifies how the index analyzes text.
+The index can subsequently be queried using the `$text` operator.
+See the [Cloudant Search documentation](search.html#analyzers) for alternative analyzers.
+You might choose to use an alternative analyzer when documents are indexed in languages other than English,
+or when you have other special requirements for the analyser such as matching email addresses.
+
+##### The `selector` field
+
+The `selector` field can be used to limit the index to a specific set of documents that match a query.
+It uses the same syntax used for selectors in queries.
+This can be used if your application requires different documents to be indexed in different ways,
+or if some documents should not be indexed at all.
+If you only need to distinguish documents by type,
+it is easier to use one index and add the type to the search query.
+
+##### The `fields` array
+
+The `fields` array contains a list of fields that should be indexed for each document.
+If you know that an index queries only on specific fields,
+then this field can be used to limit the size of the index.
+Each field must also specify a type to be indexed.
+The acceptable types are:
+
+-	`"boolean"`
+-	`"string"`
+-	`"number"`
+
+For more details on how text indexes work,
+see the [note about `text` indexes](#note-about-text-indexes).
+
+### Query Parameters
+
+> [Example using all available query parameters](try.html#requestType=cq&predefinedQuery=year2010ascending)
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gt": 2010
+    }
+  },
+  "fields": ["_id", "_rev", "year", "title"],
+  "sort": [{"year": "asc"}],
+  "limit": 10,
+  "skip": 0
+}
+```
+
+The format of the `selector` field is as described in the [selector syntax](#selector-syntax),
+with the exception of the new `$text` operator.
+
+The `$text` operator is based on a Lucene search with a standard analyzer.
+This means the operator is not case sensitive, and matches on any words.
+However,
+the `$text` operator does not support full Lucene syntax,
+such as wildcards,
+fuzzy matches,
+or proximity detection.
+For more information on the available Lucene syntax,
+see [Cloudant Search documentation](search.html#search).
+The `$text` operator applies to all strings found in the document.
+It is invalid to place this operator in the context of a field name.
+
+The `fields` array is a list of fields that should be returned for each document. The provided
+field names can use dotted notation to access subfields.
+
+### Working with indexes
+
+Cloudant endpoints can be used to create,
+list,
+update,
+and delete indexes in a database,
+and to query data using these indexes.
+
+A list of the available methods and endpoints is provided below:
+
+Method | Path | Description
+-------|------|------------
+`POST` | `/db/_index` | Create a new index
+`GET` | `/db/_index` | List all indexes
+`DELETE` | `/db/_index` | Delete an index
+`POST`| `/db/_find` | Find documents using an index
 
 ### List all indexes
 
@@ -128,26 +309,37 @@ and $name is the name of the index.
 
 #### Request body
 
-> Example request body for finding documents using an index:
+> [Example request body for finding documents using an index](try.html#requestType=cq&predefinedQuery=year2010ascending):
 
 ```json
 {
     "selector": {
-        "bar": {"$gt": 1000000}
+        "year": {"$gt": 2010}
     },
-    "fields": ["_id", "_rev", "foo", "bar"],
-    "sort": [{"bar": "asc"}],
+    "fields": ["_id", "_rev", "year", "title"],
+    "sort": [{"year": "asc"}],
     "limit": 10,
     "skip": 0
 }
 ```
 
--   **selector**: JSON object describing criteria used to select documents. More information provided in the section on [selectors](#selector-syntax).
--   **limit (optional, default: 25)**: Maximum number of results returned.
--   **skip (optional, default: 0)**: Skip the first 'n' results, where 'n' is the value specified.
--   **sort (optional, default: [])**: JSON array following [sort syntax](#sort-syntax)
--   **fields (optional, default: null)**: JSON array following the field syntax, described below. This parameter lets you specify which fields of an object should be returned. If it is omitted, the entire object is returned.
--   **r (optional, default: 1)**: Read quorum needed for the result. This defaults to 1, in which case the document found in the index is returned. If set to a higher value, each document is read from at least that many replicas before it is returned in the results. This is likely to take more time than using only the document stored locally with the index.
+-	**selector**: JSON object describing criteria used to select documents. More information provided in the section on [selectors](#selector-syntax).
+-	**limit (optional, default: 25)**: Maximum number of results returned.
+-	**skip (optional, default: 0)**: Skip the first 'n' results, where 'n' is the value specified.
+-	**sort (optional, default: [])**: JSON array following [sort syntax](#sort-syntax)
+-	**fields (optional, default: null)**: JSON array following the field syntax, described below. This parameter lets you specify which fields of an object should be returned. If it is omitted, the entire object is returned.
+-	**r (optional, default: 1)**: Read quorum needed for the result. This defaults to 1, in which case the document found in the index is returned. If set to a higher value, each document is read from at least that many replicas before it is returned in the results. This is likely to take more time than using only the document stored locally with the index.
+-	**bookmark (optional, default: null)**: A string that enables you to specify which page of results you require. *Only for indexes of type `text`.*
+-	**use_index (optional)**: Use this option to identify a specific index for query to run against, rather than using the Cloudant Query algorithm to find the best index. For more information, see [Explain Plans](#explain-plans).
+
+The `bookmark` field is used for paging through result sets. Every query returns an opaque
+string under the `bookmark` key that can then be passed back in a query to get the next page of
+results. If any part of the query other than `bookmark` changes between requests, the results are
+undefined.
+
+The `limit` and `skip` values are exactly as you would expect. While `skip` exists, it is not
+intended to be used for paging. The reason is that the `bookmark` feature
+is more efficient.
 
 #### Response body
 
@@ -178,61 +370,101 @@ and $name is the name of the index.
 
 The Cloudant Query language is expressed as a JSON object describing documents of interest. Within this structure, you can apply conditional logic using specially named fields.
 
-<aside class="notice">While the Cloudant Query language has some similarities with MongoDB query documents, these arise from a similarity of purpose and do not necessarily extend to commonality of function or result.</aside>
+<aside class="notice">While the Cloudant Query language has some similarities with MongoDB query documents,
+these arise from a similarity of purpose and do not necessarily extend to commonality of function or result.</aside>
 
 #### Selector basics
 
-> A simple selector
+> [A simple selector](try.html#requestType=cq&predefinedQuery=simple)
 
 ```json
 {
-  "name": "Paul"
+  "selector": {
+    "director": "Lars von Trier"
+  }
 }
 ```
 
-Elementary selector syntax requires you to specify one or more fields, and the corresponding values required for those fields. This selector matches all documents whose `"name"` field has the value `"Paul"`.
+Elementary selector syntax requires you to specify one or more fields, and the corresponding values required for those fields. This selector matches all documents whose `"director"` field has the value `"Lars von Trier"`.
 
-You can create more complex selector expressions by combining operators.
-However, you cannot use 'combination' or 'array logical' operators such as `$regex` as the *basis* of a query. Only the equality operators such as `$eq`, `$gt`, `$gte`, `$lt`, and `$lte` (but not `$ne`) can be used as the basis of a more complex query.
-For more information about creating complex selector expressions, see [Creating selector expressions](#creating-selector-expressions).
+<div></div>
 
-###### selector with two fields
-
-> A more complex selector
+> [A simple selector for a full text index](try.html#requestType=cq&predefinedQuery=bond)
 
 ```json
 {
+  "selector": {
+    "$text": "Bond"
+  }
+}
+```
+
+If you created a full text index by specifying `"type":"text"` when the index was created,
+you can use the `$text` operator to select matching documents.
+In this example,
+the full text index is inspected to find any document that includes the word "Bond".
+
+<div></div>
+
+> [A simple selector, inspecting specific fields](try.html#requestType=cq&predefinedQuery=bond-title-cast)
+
+```json
+"selector": {
+  "$text": "Bond"
+},
+"fields": [
+  "title",
+  "cast"
+]
+```
+
+In this example,
+the full text index is inspected to find any document that includes the word "Bond". In the response, the fields `title` or `cast` are returned for every matching object.
+
+<div></div>
+You can create more complex selector expressions by combining operators.
+However, for Cloudant Query indexes of type `json`,
+you cannot use 'combination' or 'array logical' operators such as `$regex` as the *basis* of a query.
+Only the equality operators such as `$eq`, `$gt`, `$gte`, `$lt`, and `$lte` (but not `$ne`) can be used as the basis of a more complex query.
+For more information about creating complex selector expressions, see [Creating selector expressions](#creating-selector-expressions).
+
+<div></div>
+#### Selector with two fields
+
+> [A more complex selector](try.html#requestType=cq&predefinedQuery=trier2003)
+
+```json
+"selector": {
   "name": "Paul",
   "location": "Boston"
 }
 ```
 
-This selector matches any document with a `name` field containing "Paul", that also has a `location` field with the value "Boston".
+This selector matches any document with a `name` field containing "Paul",
+_and_ that also has a `location` field with the value "Boston".
 
 ### Subfields
 
-> Example of a field and subfield selector, using a standard JSON structure:
+> [Example of a field and subfield selector, using a standard JSON structure:](try.html#requestType=cq&predefinedQuery=imdb-rating-8)
 
 ```json
-{
-  "location": {
-    "city": "Omaha"
+"selector": {
+  "imdb": {
+    "rating": 8
   }
 }
 ```
 
 A more complex selector enables you to specify the values for field of nested objects, or subfields.
-For example, you might use the standard JSON structure for specifying a field and subfield.
+For example, you might use a standard JSON structure for specifying a field and subfield.
 
 <div></div>
-
-###### h6
 
 > Example of an equivalent dot-notation field and subfield selector:
 
 ```json
-{
-  "location.city": "Omaha"
+"selector": {
+  "imdb.rating": 8
 }
 ```
 
@@ -240,13 +472,12 @@ An abbreviated equivalent uses a dot notation to combine the field and subfield 
 
 ### Operators
 
-> Example selector using an operator to match any document,
-where the `age` field has a value greater than 20:
+> [Example selector using an operator to match any document, where the `age` field has a value greater than 20:](try.html#requestType=cq&predefinedQuery=after2010)
 
 ```json
-{
-  "age": {
-    "$gt": 20
+"selector": {
+  "year": {
+    "$gt": 2010
   }
 }
 ```
@@ -280,28 +511,26 @@ The implicit equality test applies also for fields and subfields.
 
 Any JSON object that is not the argument to a condition operator is an implicit `$and` operator on each field.
 
-###### h6
+<div></div>
 
-> Example of the implicit equality operator
+> [Example of the implicit equality operator](/try.html#requestType=cq&predefinedQuery=simple)
 
 ```json
 {
-  "foo": "bar"
+  "director": "Lars von Trier"
 }
 ```
 
-In this example, there must be a field `foo` in a matching document, *and* the field must have a value exactly equal to "bar".
+In this example, there must be a field `director` in a matching document, *and* the field must have a value exactly equal to "Lars von Trier".
 
 <div></div>
-
-###### h6
 
 > Example of an explicit equality operator
 
 ```json
 {
-  "foo": {
-    "$eq": "bar"
+  "director": {
+    "$eq": "Lars von Trier"
   }
 }
 ```
@@ -310,55 +539,83 @@ You can also make the equality operator explicit.
 
 <div></div>
 
-###### h6
-
-> Example of implicit operator applied to a subfield test
+> [Example of implicit operator applied to a subfield test](/try.html#requestType=cq&predefinedQuery=imdb-rating-8)
 
 ```json
 {
-  "foo": {
-    "bar": "baz"
+  "imdb": {
+    "rating": 8
   }
 }
 ```
 
 In the example using subfields,
-the required field `foo` in a matching document *must* also have a subfield `bar` *and* the subfield *must* have a value exactly equal to "baz".
+the required field `imdb` in a matching document *must* also have a subfield `rating` *and* the subfield *must* have a value equal to 8.
 
 <div></div>
 
 > Example of an explicit equality operator
 
 ```json
-{
-  "foo": {
-    "$eq": {
-      "bar": "baz"
-    }
+"selector": {
+  "imdb": {
+    "rating": { "$eq": 8 }
   }
+}
+```
+
+> [`$eq` operator used with full text indexing](try.html#requestType=cq&predefinedQuery=2010-by-title)
+
+```json
+{
+  "selector": {
+    "year": {
+      "$eq": 2001
+    }
+  },
+  "sort": [
+    "title:string"
+  ],
+  "fields": [
+    "title"
+  ]
+}
+```
+
+> `$eq` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$eq": 2001
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
 }
 ```
 
 Again, you can make the equality operator explicit.
 
-<div id="combined-expressions"></div>
+<div></div>
 
-###### h6
-
-> Example of an implicit `$and` operator
+> [Example of an implicit `$and` operator](try.html#requestType=cq&predefinedQuery=trier2003)
 
 ```json
 {
-  "foo": "bar",
-  "baz": true
+  "director": "Lars von Trier",
+  "year": 2003
 }
 ```
 
-In this example, the field `foo` must be present and contain the value `bar` _and_ the field `baz` must exist and have the value `true`.
+In this example, the field `director` must be present and contain the value `"Lars von Trier"` _and_ the field `year` must exist and have the value `2003`.
 
-<div></div>
-
-###### h6
+<div id="combined-expressions"></div>
 
 > Example of using explicit `$and` and `$eq` operators
 
@@ -366,20 +623,26 @@ In this example, the field `foo` must be present and contain the value `bar` _an
 {
   "$and": [
     {
-      "foo": {
-        "$eq": "bar"
+      "director": {
+        "$eq": "Lars von Trier"
       }
     },
     {
-      "baz": {
-        "$eq": true
+      "year": {
+        "$eq": 2003
       }
     }
   ]
 }
 ```
 
-You can make both the `and` operator and the equality operator explicit.
+You can make both the `$and` operator and the equality operator explicit.
+
+### Explicit operators
+
+All operators,
+apart from 'Equality' and 'And',
+must be stated explicitly.
 
 ### Combination Operators
 
@@ -399,7 +662,295 @@ Operator | Argument | Purpose
 `$not` | Selector | Matches if the given selector does not match.
 `$nor` | Array | Matches if none of the selectors in the array match.
 `$all` | Array | Matches an array value if it contains all the elements of the argument array.
-`$elemMatch` | Selector | Matches an array value if any of the elements in the array are matched by the argument to `$elemMatch`, then returns only the first match.
+`$elemMatch` | Selector | Matches and returns all documents that contain an array field with at least one element that matches all the specified query criteria.
+
+<div></div>
+#### Examples of combination operators
+
+<div></div>
+##### The `$and` operator
+
+> [`$and` operator used with full text indexing](try.html#requestType=cq&predefinedQuery=schwarzenegger)
+
+```json
+{
+  "selector": {
+    "$and": [
+      {
+        "$text": "Schwarzenegger"
+      },
+      {
+        "year": {
+          "$in": [1984, 1991]
+        }
+      }
+    ]
+  },
+  "fields": [
+    "year",
+    "title",
+    "cast"
+  ]
+}
+```
+
+> `$and` operator used with primary index
+
+```json
+{
+  "selector": {
+    "$and": [
+      {
+        "_id": { "$gt": null }
+      },
+      {
+        "year": {
+          "$in": [2014, 2015]
+        }
+      }
+    ]
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ],
+  "limit": 10
+}
+```
+
+The `$and` operator matches if all the selectors in the array match.
+
+<div></div>
+##### The `$or` operator
+
+> `$or` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "$or": [
+      { "director": "George Lucas" },
+      { "director": "Steven Spielberg" }
+    ]
+  },
+  "fields": [
+    "title",
+    "director",
+    "year"
+  ]
+}
+```
+
+> `$or` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": 1977,
+    "$or": [
+      { "director": "George Lucas" },
+      { "director": "Steven Spielberg" }
+    ]
+  },
+  "fields": [
+    "title",
+    "director",
+    "year"
+  ]
+}
+```
+
+The `$or` operator matches if any of the selectors in the array match.
+
+<div></div>
+##### The `$not` operator
+
+> `$not` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 1900
+    },
+    "year": {
+      "$lte": 1903
+    },
+    "$not": {
+      "year": 1901
+    }
+  },
+  "fields": [
+    "title",
+    "year"
+  ]
+}
+```
+
+> `$not` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 1900
+    },
+    "year": {
+      "$lte": 1903
+    },
+    "$not": {
+      "year": 1901
+    }
+  },
+  "fields": [
+    "title",
+    "year"
+  ]
+}
+```
+
+The `$not` operator matches if the given selector does _not_ match.
+
+<div></div>
+##### The `$nor` operator
+
+> `$nor` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 1900
+    },
+    "year": {
+      "$lte": 1910
+    },
+    "$nor": [
+      { "year": 1901 },
+      { "year": 1905 },
+      { "year": 1907 }
+    ]
+  },
+  "fields": [
+    "title",
+    "year"
+  ]
+}
+```
+
+> `$nor` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 1900
+    },
+    "year": {
+      "$lte": 1910
+    },
+    "$nor": [
+      { "year": 1901 },
+      { "year": 1905 },
+      { "year": 1907 }
+    ]
+  },
+  "fields": [
+    "title",
+    "year"
+  ]
+}
+```
+
+The `$nor` operator matches if the given selector does _not_ match.
+
+<div></div>
+##### The `$all` operator
+
+> `$all` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "genre": {
+      "$all": ["Comedy","Short"]
+      }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ],
+  "sort": [
+    "title:string"
+  ]
+}
+```
+
+> `$all` operator used with primary database index
+
+```json
+{
+  "selector": {
+    "_id": {
+      "$gt": null
+    },
+    "genre": {
+      "$all": ["Comedy","Short"]
+      }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ],
+  "limit": 10
+}
+```
+
+The `$all` operator matches an array value if it contains _all_ the elements of the argument array.
+
+<div></div>
+##### The `$elemMatch` operator
+
+> `$elemMatch` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "genre": {
+      "$elemMatch": {
+        "$eq": "Horror"
+      }
+    }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ]
+}
+```
+
+> `$elemMatch` operator used with primary database index
+
+```json
+{
+  "selector": {
+    "_id": { "$gt": null },
+    "genre": {
+      "$elemMatch": {
+        "$eq": "Horror"
+      }
+    }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ],
+  "limit": 10
+}
+```
+
+The `$elemMatch` operator matches and returns all documents that contain an array field with at least one element matching the supplied query criteria.
 
 ### Condition Operators
 
@@ -420,23 +971,593 @@ Object | `$exists` | Boolean | Check whether the field exists or not, regardless
 Array | `$in` | Array of JSON values | The document field must exist in the list provided.
  | `$nin` | Array of JSON values | The document field must not exist in the list provided.
  | `$size` | Integer | Special condition to match the length of an array field in a document. Non-array fields cannot match this condition.
-Miscellaneous | `$mod` | [Divisor, Remainder] | Divisor and Remainder are both positive integers greater than 0. Matches documents where (field % Divisor == Remainder) is true. This is false for any non-integer field.
+Miscellaneous | `$mod` | [Divisor, Remainder] | Divisor and Remainder are both positive or negative integers. Non-integer values result in a [404 status](http.html#404). Matches documents where (`field % Divisor == Remainder`) is true, and only when the document field is an integer.
  | `$regex` | String | A regular expression pattern to match against the document field. Only matches when the field is a string value and matches the supplied regular expression.
 
 <aside class="warning">Regular expressions do not work with indexes, so they should not be used to filter large data sets.</aside>
 
+<div></div>
+#### Examples of condition operators
+
+<div></div>
+##### The `$lt` operator
+
+> `$lt` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$lt": 1900
+    }
+  },
+  "sort": [
+    "year:number",
+    "title:string"
+  ],
+  "fields": [
+    "year",
+    "title"
+  ]
+}
+```
+
+> `$lt` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$lt": 1900
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
+}
+```
+
+The `$lt` operator matches if the specified field content is less than the argument.
+
+<div></div>
+##### The `$lte` operator
+
+> `$lte` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$lte": 1900
+    }
+  },
+  "sort": [
+    "year:number",
+    "title:string"
+  ],
+  "fields": [
+    "year",
+    "title"
+  ]
+}
+```
+
+> `$lte` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$lte": 1900
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
+}
+```
+
+The `$lte` operator matches if the specified field content is less than or equal to the argument.
+
+<div></div>
+##### The `$eq` operator
+
+> `$eq` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$eq": 2001
+    }
+  },
+  "sort": [
+    "title:string"
+  ],
+  "fields": [
+    "title"
+  ]
+}
+```
+
+> `$eq` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$eq": 2001
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
+}
+```
+
+The `$eq` operator matches if the specified field content is equal to the supplied argument.
+
+<div></div>
+##### The `$ne` operator
+
+> `$ne` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$ne": 1892
+    }
+  },
+  "fields": [
+    "year"
+  ],
+  "sort": [
+    "year:number"
+  ]
+}
+```
+
+> `$ne` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": {
+      "$gt": null
+    },
+    "year": {
+      "$ne": 1892
+    }
+  },
+  "fields": [
+    "year"
+  ],
+  "limit": 10
+}
+```
+
+The `$ne` operator matches if the specified field content is not equal to the supplied argument.
+<aside class="warning">The `$ne` operator cannot be the basis (lowest level) element in a selector when using an index of type `json`.</aside>
+
+<div></div>
+##### The `$gte` operator
+
+> `$gte` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 2001
+    }
+  },
+  "sort": [
+    "year:number",
+    "title:string"
+  ],
+  "fields": [
+    "year",
+    "title"
+  ]
+}
+```
+
+> `$gte` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gte": 2001
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
+}
+```
+
+The `$gte` operator matches if the specified field content is greater than or equal to the argument.
+
+<div></div>
+##### The `$gt` operator
+
+> `$gte` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gt": 2001
+    }
+  },
+  "sort": [
+    "year:number",
+    "title:string"
+  ],
+  "fields": [
+    "year",
+    "title"
+  ]
+}
+```
+
+> `$gt` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gt": 2001
+    }
+  },
+  "sort": [
+    "year"
+  ],
+  "fields": [
+    "year"
+  ]
+}
+```
+
+The `$gt` operator matches if the specified field content is greater than the argument.
+
+<div></div>
+##### The `$exists` operator
+
+> `$exists` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": 2015,
+    "title": {
+      "$exists": true
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ]
+}
+```
+
+> `$exists` operator used with database indexed on the field `"year"`
+
+```json
+{
+  "selector": {
+    "year": 2015,
+    "title": {
+      "$exists": true
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ]
+}
+```
+
+The `$exists` operator matches if the field exists, regardless of its value.
+
+<div></div>
+##### The `$type` operator
+
+> `$type` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$type": "number"
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ]
+}
+```
+
+> `$type` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": { "$gt": null },
+    "year": {
+      "$type": "number"
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ]
+}
+```
+
+The `$type` operator requires that the specified document field is of the correct type.
+
+<div></div>
+##### The `$in` operator
+
+> `$in` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$in": [2010,2015]
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ],
+  "sort": [
+    "year:number"
+  ]
+}
+```
+
+> `$in` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": { "$gt": null },
+    "year": {
+      "$in": [2010, 2015]
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ],
+  "limit": 10
+}
+```
+
+The `$in` operator requires that the document field _must_ exist in the list provided.
+
+<div></div>
+##### The `$nin` operator
+
+> `$nin` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$gt": 2009,
+      "$nin": [2010, 2015]
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ],
+  "sort": [
+    "year:number"
+  ]
+}
+```
+
+> `$nin` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": { "$gt": null },
+    "year": {
+      "$nin": [2010, 2015]
+    }
+  },
+  "fields": [
+    "year",
+    "_id",
+    "title"
+  ],
+  "limit": 10
+}
+```
+
+The `$nin` operator requires that the document field must _not_ exist in the list provided.
+
+<div></div>
+##### The `$size` operator
+
+> `$size` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "genre": {
+      "$size": 4
+    }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ],
+  "limit": 1000
+}
+```
+
+> `$size` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": {
+      "$gt": null
+    },
+    "genre": {
+      "$size": 4
+    }
+  },
+  "fields": [
+    "title",
+    "genre"
+  ],
+  "limit": 25
+}
+```
+
+The `$size` operator matches the length of an array field in a document.
+
+<div></div>
+##### The `$mod` operator
+
+> `$mod` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "year": {
+      "$mod": [100,0]
+    }
+  },
+  "fields": [
+    "title",
+    "year"
+  ],
+  "limit": 50
+}
+```
+
+> `$mod` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": {
+      "$gt": null
+    },
+    "year": {
+      "$mod": [100,0]
+    }
+  },
+  "fields": [
+    "title",
+    "year"
+  ],
+  "limit": 50
+}
+```
+
+The `$mod` operator matches documents where (`field % Divisor == Remainder`) is true,
+and only when the document field is an integer.
+The Divisor and Remainder must be integers.
+They can be positive or negative integers.
+A query where the Divisor or Remainder is a non-integer returns a [404 status](http.html#404).
+
+<aside class="notice">When using negative integer values for the Divisor or Remainder,
+you should note that the Cloudant `$mod` operator is similar to the
+[Erlang `rem` modulo operator](http://erlang.org/doc/reference_manual/expressions.html),
+or the [`%` operator in C](https://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B),
+and uses [truncated division](https://en.wikipedia.org/wiki/Modulo_operation).</aside>
+
+<div></div>
+##### The `$regex` operator
+
+> `$regex` operator used with full text indexing
+
+```json
+{
+  "selector": {
+    "cast": {
+      "$elemMatch": {
+        "$regex": "^Robert"
+      }
+    }
+  },
+  "fields": [
+    "title",
+    "cast"
+  ],
+  "limit": 10
+}
+```
+
+> `$regex` operator used with primary index
+
+```json
+{
+  "selector": {
+    "_id": {
+      "$gt": null
+    },
+    "cast": {
+      "$elemMatch": {
+        "$regex": "^Robert"
+      }
+    }
+  },
+  "fields": [
+    "title",
+    "cast"
+  ],
+  "limit": 10
+}
+```
+
+The `$regex` operator matches when the field is a string value _and_ matches the supplied regular expression.
+
 ### Creating selector expressions
 
 We have seen examples of combining selector expressions,
-such as [using explicit `$and` and `$eq` operators](#combined-expressions).
+such as [using explicit `$and` and `$eq` operators](cloudant-query.html#combined-expressions).
 In general,
 whenever you have an operator that takes an argument,
 that argument can itself be another operator with arguments of its own.
 This enables us to build up more complex selector expressions.
 
-However, not all operators can be used as the base or starting point of the selector expression.
+However, not all operators can be used as the base or starting point of the selector expression when using indexes of type `json`.
 
-<aside class="warning">You cannot use combination or array logical operators such as `$regex` as the *basis* of a query. Only equality operators such as `$eq`, `$gt`, `$gte`, `$lt`, and `$lte` (but not `$ne`) can be used as the basis of a query.</aside>
+<aside class="warning">You cannot use combination or array logical operators such as `$regex` as the _basis_ of a query when using indexes of type `json`.
+Only equality operators such as `$eq`, `$gt`, `$gte`, `$lt`, and `$lte` (but not `$ne`) can be used as the basis of a query for `json` indexes.</aside>
 
 <div></div>
 
@@ -509,13 +1630,19 @@ see the <a href="http://erlang.org/doc/man/re.html" target="_blank">Erlang Regul
 [{"fieldName1": "desc"}, {"fieldName2": "desc" }]
 ```
 
-The sort syntax uses a basic array of field name and direction pairs.
+The `sort` field contains a list of field name and direction pairs,
+expressed as a basic array.
 The first field name and direction pair is the topmost level of sort.
-The second pair, if provided is the next level of sort.
+The second pair,
+if provided,
+is the next level of sort.
 
-The `field` can be any field, using dotted notation if desired for sub-document fields.
+The field can be any field,
+using dotted notation if desired for sub-document fields.
+
 The direction value is `"asc"` for ascending, and `"desc"` for descending.
 
+<div></div>
 > A simple query, using sorting:
 
 ```json
@@ -530,15 +1657,31 @@ then to sort the results according to the specified field, in the required direc
 
 To use sorting, ensure that:
 
-- At least one of the sort fields is included in the selector.
-- There is an index already defined, with all the sort fields in the same order.
-- Each object in the sort array has a single key.
+-	At least one of the sort fields is included in the selector.
+-	There is an index already defined, with all the sort fields in the same order.
+-	Each object in the sort array has a single key.
 
 <aside class="warning">If an object in the sort array does not have a single key, the resulting sort order is implementation specific and might change.</aside>
 
 <aside>Currently, Cloudant Query does not support multiple fields with different sort orders, so the directions must be either all ascending or all descending.</aside>
 
 If the direction is ascending, you can use a string instead of an object to specify the sort fields.
+
+For field names in text search sorts, it is
+sometimes necessary for a field type to be specified,
+for example:
+
+  `{ "<fieldname>:string": "asc"}`
+
+If possible,
+an attempt is made to discover the field type based on the selector.
+In ambiguous cases the field type must be provided explicitly.
+
+<aside class="warning">
+The sorting order is undefined when fields contain different data types.
+This is an important difference between text and view indexes.
+Sorting behavior for fields with different data types might change in future versions.
+</aside>
 
 ### Filtering fields
 
@@ -562,4 +1705,445 @@ The fields returned are specified as an array.
 <aside>Only the specified filter fields are included, in the response.
 There is no automatic inclusion of the `_id` or other metadata fields when a field list is included.</aside>
 
+### Explain Plans
 
+Cloudant Query chooses which index to use for responding to a query,
+unless you specify an index at query time.
+
+When choosing which index to use,
+Cloudant Query uses the following logic:
+
+-	If there are two or more `json` type indexes on the same fields, the index with the smallest number of fields in the index is preferred. If there are still two or more candidate indexes, the index with the first alphabetical name is chosen.
+-	If a `json` type index _and_ a `text` type index could both satisfy a selector, the `json` index is chosen by default.
+-	If a `json` type index _and_ a `text` type index the same field (for example `fieldone`), but the selector can only be satisfied by using a `text` type index, then the `text` type index is chosen.
+
+For example, assume you have a `text` type index and a `json` type index for the field `foo`,
+and you want to use a selector similar to the following:
+
+  `{"foo": {"$in": ["red","blue","green"]}}`
+
+Cloudant Query uses the `text` type index,
+because a `json` type index cannot satisfy the selector.
+
+However,
+you might use a different selector with the same indexes:
+
+  `{"foo": {"$gt": 2}}`
+
+In this example,
+Cloudant Query uses the `json` type index because both types of indexes could satisfy the selector.
+
+<div></div>
+
+> Example showing how to identify the index used to answer a query:
+
+```http
+POST /movies/_explain HTTP/1.1
+Host: examples.cloudant.com
+Content-Type: application/json
+
+{
+  "selector": {
+    "$text": "Pacino",
+    "year": 2010
+  }
+}
+```
+
+```shell
+curl 'https://examples.cloudant.com/movies/_explain' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"selector": {
+	  "$text": "Pacino",
+	  "year": 2010
+	}
+      }'
+```
+
+> Results showing which index was used to answer a query:
+
+```json
+{
+  "dbname": "examples/movies",
+  "index": {
+    "ddoc": "_design/32372935e14bed00cc6db4fc9efca0f1537d34a8",
+    "name": "32372935e14bed00cc6db4fc9efca0f1537d34a8",
+    "type": "text",
+    "def": {
+      "default_analyzer": "keyword",
+      "default_field": {},
+      "selector": {},
+      "fields": []
+    }
+  },
+  "selector": {
+    "$and": [
+      {
+	"$default": {
+	  "$text": "Pacino"
+	}
+      },
+      {
+	"year": {
+	  "$eq": 2010
+	}
+      }
+    ]
+  },
+  "opts": {
+    "use_index": [],
+    "bookmark": [],
+    "limit": 10000000000,
+    "skip": 0,
+    "sort": {},
+    "fields": "all_fields",
+    "r": [
+      49
+    ],
+    "conflicts": false
+  },
+  "limit": 200,
+  "skip": 0,
+  "fields": "all_fields",
+  "query": "(($default:Pacino) AND (year_3anumber:2010))",
+  "sort": "relevance"
+}
+```
+
+To identify which index is being used by a particular query,
+send a `POST` to the `_explain` endpoint for the database,
+with the query as data.
+The details of the index in use are shown in the `index` object within the result.
+
+<div></div>
+
+> Example query with instructions to use a specific index:
+
+```json
+{
+  "selector": {
+    "$text": "Pacino",
+    "year": 2010
+  },
+  "use_index": "_design/32372935e14bed00cc6db4fc9efca0f1537d34a8"
+}
+```
+
+To instruct a query to use a specific index,
+add the `use_index` parameter to the query.
+The value of the `use_index` parameter takes one of two formats:
+
+-	`"use_index": "<design_document>"`
+-	`"use_index": ["<design_document>","<index_name"]`
+
+### Note about `text` indexes
+
+The basic premise for full text indexes is that a document is "expanded" into a list of key/value pairs that are indexed by Lucene.
+This allows us to make use of Lucene's search syntax as a basis for the query capability.
+
+While supporting enhanced searches, this technique does have certain limitations.
+For example, it might not always be clear whether content for an expanded document came from individual elements or an array.
+
+The query mechanism resolves this by preferring to return 'false positive' results.
+In other words,
+if a match would have be found as a result of searching for either an individual element,
+or an element from an array,
+then the match is considered to have succeeded.
+
+#### Selector Translation
+
+> Example query to be translated
+
+```json
+{"age": {"$gt": 5}}
+```
+
+> Corresponding Lucene query
+
+```
+(age_3anumber:{5 TO Infinity])
+```
+
+A standard Lucene search expression would not necessarily fully 'understand' Cloudant's JSON based query syntax. Therefore, a translation between the two formats takes place.
+
+In the example given,
+the JSON query approximates to the English phrase:
+"match if the age expressed as a number is greater than five and less than or equal to infinity".
+The Lucene query corresponds to that phrase,
+where the text `_3a` within the fieldname corresponds to the `age:number` field,
+and is an example of the document content expansion mentioned earlier.
+
+#### A more complex example
+
+> JSON query to be translated
+
+```json
+{
+  "$or": [
+  {"age": {"$gt": 5}},
+  {"twitter":{"$exists":true}},
+  {"type": {"$in": [
+    "starch",
+    "protein"
+  ]}}
+  ]
+}
+```
+
+> Corresponding Lucene query<br/>(the '#' comment is not valid Lucene syntax, but helps explain the query construction):
+
+```
+(
+# Search for age > 5
+(age_3anumber:{5 TO Infinity])
+# Search for documents containing the twitter field
+(($fieldnames:twitter_3a*) OR ($fieldnames:twitter_2e*))
+# Search for type = starch
+(
+((type_3astring:starch) OR (type_2e_5b_5d_3astring:starch))
+# Search for type = protein
+((type_3astring:protein) OR (type_2e_5b_5d_3astring:protein))
+)
+)
+```
+
+This example illustrates some important points.
+
+In the `{"$exists":true}` JSON query,
+we use a two clause `OR` query for the `twitter` field, ending in `_3a*` and `_2e*`. This clause
+searches the `$fieldnames` field for entries that contain either `twitter.*` or `twitter:*`. The
+reason is to match when the value is an array _or_ an object. Implementing
+this as two phrases instead of a single `twitter*` query prevents an accidental match
+with a field name such as `twitter_handle` or similar.
+
+The last of the three main clauses, where we search for `starch` or `protein`, is more complicated.
+The `$in` operator has some
+special semantics for array values that are inherited from MongoDB's documented behavior.
+In particular, the `$in` operator applies to the value **OR** any of the values contained in an array named by the
+given field. In our example, this means that both `"type":"starch"` **AND** `"type":["protein"]` would
+match the example argument to `$in`.
+We saw earlier that `type_3astring` translates to
+`type:string`. The second `type_2e_5b_5d_3astring` phrase translates to `type.[]:string`,
+which is an example of the expanded array indexing.
+
+### Example: Movies Demo Database
+
+> Obtaining a copy of the Cloudant Query movie database:
+
+```http
+POST /_replicator HTTP/1.1
+Host: user.cloudant.com
+Content-Type: application/json
+
+{
+  "source": "https://examples.cloudant.com/query-movies",
+  "target": "https://<user:password>@<user>.cloudant.com/my-movies",
+  "create_target": true,
+  "use_checkpoints": false
+}
+```
+
+```shell
+curl 'https://<user:password>@<user>.cloudant.com/_replicator' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "source": "https://examples.cloudant.com/query-movies",
+    "target": "https://<user:password>@<user>.cloudant.com/my-movies",
+    "create_target": true,
+    "use_checkpoints": false
+}'
+```
+
+> Results after successful replication of the Cloudant Query movie database:
+
+```json
+{
+  "ok": true,
+  "use_checkpoints": false
+}
+```
+
+To describe full text indexes,
+it is helpful to have a large collection of data to work with.
+A suitable collection is available in the example Cloudant Query movie database: `query-movies`.
+You can obtain a copy of this database in your database, with the name `my-movies`,
+by running the command shown.
+
+The sample database contains approximately 3,000 documents, and is just under 1 MB in size.
+
+<div></div>
+
+> Creating a _text_ index for your sample database:
+
+```http
+POST /my-movies/_index HTTP/1.1
+Host: user.cloudant.com
+Content-Type: application/json
+
+{
+  "index": {},
+  "type": "text"
+}
+```
+
+```shell
+curl 'https://<user:password>@<user>.cloudant.com/my-movies/_index' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{"index": {}, "type": "text"}'
+```
+
+> Response after creating a text index:
+
+```json
+{
+  "result": "created"
+}
+```
+
+Before we can search the content, we must index it. We do this by creating a text index for the documents.
+
+<div></div>
+
+> Searching for a specific document within the database:
+
+```http
+POST /my-movies/_find HTTP/1.1
+Host: user.cloudant.com
+Content-Type: application/json
+
+{
+  "selector": {
+    "Person_name":"Zoe Saldana"
+  }
+}
+```
+
+```shell
+curl -X POST -H "Content-Type: application/json" \
+        https://<user:password>@<user>.cloudant.com/my-movies/_find \
+        -d '{"selector": {"Person_name":"Zoe Saldana"}}'
+```
+
+> Example result from the search:
+
+```json
+{
+  "docs": [
+    {
+      "_id": "d9e6a7ae2363d6cfe81af75a3941110b",
+      "_rev": "1-556aec0e89fa13769fbf59d651411528",
+      "Movie_runtime": 162,
+      "Movie_rating": "PG-13",
+      "Person_name": "Zoe Saldana",
+      "Movie_genre": "AVYS",
+      "Movie_name": "Avatar",
+      "Movie_earnings_rank": "1",
+      "Person_pob": "New Jersey, USA",
+      "Movie_year": 2009,
+      "Person_dob": "1978-06-19"
+    }
+  ],
+  "bookmark": "g2wA ... Omo"
+}
+```
+
+The most obvious difference in the results you get when using full text indexes is the inclusion of a large `bookmark` field.
+The reason is that text indexes are different to view-based indexes.
+For more flexibility when working with the results obtained from a full text query, you can supply the `bookmark` value as part of the request body.
+Using the `bookmark` enables you to specify which page of results you require.
+
+<aside class="warning">The actual `bookmark` value is very long, so the examples here are truncated for reasons of clarity.</aside>
+
+<div></div>
+
+> Example of a slightly more complex search:
+
+```http
+POST /my-movies/_find HTTP/1.1
+Host: user.cloudant.com
+Content-Type: application/json
+
+{
+  "selector": {
+    "Person_name":"Robert De Niro",
+    "Movie_year": 1978
+  }
+}
+```
+
+```shell
+curl -X POST -H "Content-Type: application/json" \
+        https://<user:password>@<user>.cloudant.com/my-movies/_find \
+        -d '{"selector": {"Person_name":"Robert De Niro", "Movie_year": 1978}}'
+```
+
+> Example result from the search:
+
+```json
+{
+  "docs": [
+    {
+      "_id": "d9e6a7ae2363d6cfe81af75a392eb9f2",
+      "_rev": "1-9faa75d7ea524448b1456a6c69a4391a",
+      "Movie_runtime": 183,
+      "Movie_rating": "R",
+      "Person_name": "Robert De Niro",
+      "Movie_genre": "DW",
+      "Movie_name": "Deer Hunter, The",
+      "Person_pob": "New York, New York, USA",
+      "Movie_year": 1978,
+      "Person_dob": "1943-08-17"
+    }
+  ],
+  "bookmark": "g2w ... c2o"
+}
+```
+
+> Example of searching within a range:
+
+```http
+POST /my-movies/_find HTTP/1.1
+Host: user.cloudant.com
+Content-Type: application/json
+
+{
+  "selector": {
+    "Person_name":"Robert De Niro",
+    "Movie_year": {
+      "$in": [1974, 2009]
+    }
+  }
+}
+```
+
+```shell
+curl -X POST -H "Content-Type: application/json" \
+        https://<user:password>@<user>.cloudant.com/my-movies/_find \
+        -d '{"selector": {"Person_name":"Robert De Niro", "Movie_year": { "$in": [1974, 2009]}}}'
+```
+
+> Example result from the search:
+
+```json
+{
+  "docs": [
+    {
+      "_id": "d9e6a7ae2363d6cfe81af75a392eb9f2",
+      "_rev": "1-9faa75d7ea524448b1456a6c69a4391a",
+      "Movie_runtime": 183,
+      "Movie_rating": "R",
+      "Person_name": "Robert De Niro",
+      "Movie_genre": "DW",
+      "Movie_name": "Deer Hunter, The",
+      "Person_pob": "New York, New York, USA",
+      "Movie_year": 1978,
+      "Person_dob": "1943-08-17"
+    }
+  ],
+  "bookmark": "g2w ... c2o"
+}
+```

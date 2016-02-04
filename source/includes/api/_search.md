@@ -15,29 +15,63 @@
 
 Search indexes, defined in design documents, allow databases to be queried using [Lucene Query Parser Syntax](http://lucene.apache.org/core/4_3_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Overview). Search indexes are defined by an index function, similar to a map function in MapReduce views. The index function decides what data to index and store in the index.
 
+This video explains how to create search indexes:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/QWeOQXe_Ofc?rel=0" frameborder="0" allowfullscreen title="Video on creating search indexes"></iframe>
+
+This video explains how to query search indexes:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/8_knCoGbYbI?rel=0" frameborder="0" allowfullscreen title="Video on querying search indexes"></iframe>
+
+This video explains how to perform group, facet, and geo searches using search indexes:<br/>
+<iframe width="480" height="270" src="https://www.youtube.com/embed/e92mHTWaAJM?rel=0" frameborder="0" allowfullscreen title="Video on performing group, facet, and geo searches using search indexes"></iframe>
+
 ### Index functions
 
-> Example search index function:
+> Example search index function (see also [index guard clauses](#index-guard-clauses)):
 
 ```
 function(doc){
   index("default", doc._id);
-  if(doc.min_length){
-    index("min_length", doc.min_length, {"store": "yes"});
+  if (doc.min_length){
+    index("min_length", doc.min_length, {"store": true});
   }
-  if(doc.diet){
-    index("diet", doc.diet, {"store": "yes"});
+  if (doc.diet){
+    index("diet", doc.diet, {"store": true});
   }
   if (doc.latin_name){
-    index("latin_name", doc.latin_name, {"store": "yes"});
+    index("latin_name", doc.latin_name, {"store": true});
   }
   if (doc.class){
-    index("class", doc.class, {"store": "yes"});
+    index("class", doc.class, {"store": true});
   }
 }
 ```
 
-The function contained in the index field is a Javascript function that is called for each document in the database. It takes the document as a parameter, extracts some data from it and then calls the `index` function to index that data. The `index` function takes 3 parameters, where the third parameter is optional. The first parameter is the name of the index. If the special value `"default"` is used, the data is stored in the default index, which is queried if no index name is specified in the search. The second parameter is the data to be indexed. The third parameter is an object that can contain the fields `store` and `index`. If the `store` field contains the value `yes`, the value will be returned in search results, otherwise, it will only be indexed. The `index` field can have the following values describing whether and how the data is indexed:
+<aside class="warning">Attempting to index using a data field that does not exist will fail.
+To avoid this problem, use an appropriate [guard clause](#index-guard-clauses).</aside>
+
+The function contained in the index field is a Javascript function that is called for each document in the database. It takes the document as a parameter, extracts some data from it and then calls the `index` function to index that data.
+
+The `index` function takes three parameters, where the third parameter is optional.
+The first parameter is the name of the field used when querying the index,
+specified in the Lucene syntax portion of the query.
+For example,
+when querying:
+
+  `q=color:red`
+
+"color" is the Lucene field name.
+
+If the special value `"default"` is used,
+the field name is not specified at query time.
+The effect is that the query becomes:
+
+  `q=red`
+
+The second parameter is the data to be indexed. The third parameter is an object that can contain the fields `store` and `index`. If the `store` field contains the value `true`, the value will be returned in search results, otherwise, it will only be indexed.
+
+<!-- Removed next paragraph as part of FB46834.
+
+The `index` field can have the following values describing whether and how the data is indexed:
 
 -   `analyzed`: Index the tokens produced by running the field's value through an analyzer.
 -   `analyzed_no_norms`: Index the tokens produced by running the field's value through an analyzer, and also separately disable the storing of norms.
@@ -47,58 +81,75 @@ The function contained in the index field is a Javascript function that is calle
 
 This index function indexes only a single field in the document. You, however, compute the value to be indexed from several fields or index only part of a field (rather than its entire value).
 
-The `index` function also provides a third, options parameter that receives a JavaScript Object with the following possible values and defaults:
+-->
 
-<table>
-<colgroup>
-<col width="3%" />
-<col width="63%" />
-<col width="26%" />
-<col width="6%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="left">Option</th>
-<th align="left">Description</th>
-<th align="left">Values</th>
-<th align="left">Default</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left"><code>boost</code></td>
-<td align="left">Analogous to the <code>boost</code> query string parameter, but done at index time rather than query time.</td>
-<td align="left">Float</td>
-<td align="left"><code>1.0</code> (no boosting)</td>
-</tr>
-<tr class="even">
-<td align="left"><code>index</code></td>
-<td align="left">Whether (and how) the data is indexed. The options available are explained in the <a href="http://lucene.apache.org/core/3_6_2/api/core/org/apache/lucene/document/Field.Index.html#enum_constant_summary">Lucene documentation</a>.</td>
-<td align="left"><code>analyzed</code>, <code>analyzed_no_norms</code>, <code>no</code>, <code>not_analyzed</code>, <code>not_analyzed_no_norms</code></td>
-<td align="left"><code>analyzed</code></td>
-</tr>
-<tr class="odd">
-<td align="left"><code>store</code></td>
-<td align="left">If <code>true</code>, the value will be returned in the search result; if <code>false</code>, the value will not be returned in the search result.</td>
-<td align="left"><code>true</code>, <code>false</code></td>
-<td align="left"><code>false</code></td>
-</tr>
-<tr class="even">
-<td align="left"><code>facet</code></td>
-<td align="left">If <code>true</code>, faceting will be turned on for the data being indexed. Faceting is off by default.</td>
-<td align="left"><code>true</code>, <code>false</code></td>
-<td align="left"><code>false</code></td>
-</tr>
-</tbody>
-</table>
-
-
+The `index` function also provides a third 'options' parameter that receives a JavaScript Object with the following possible values and defaults:
 
 Option | Description | Values | Default
 -------|-------------|--------|---------
-store | If `true`, the value will be returned in the search result; otherwise, it will not be. | `true`, `false` | `false`
-index | whether (and how) the data is indexed. See [Analyzers](#analyzers) for more info. | `analyzed`, `analyzed_no_norms`, `no`, `not_analyzed`, `not_analyzed_no_norms` | analyzed
-facet | creates a faceted index. See [Faceting](#faceting) for more info. | `true`, `false` | `false`
+`index` | Whether the data is indexed, and if so, how. If set to `false` or `no`, the data cannot be used for searches, but can still be retrieved from the index if `store` is set to `true`. See [Analyzers](#analyzers) for more information. | `analyzed`, `analyzed_no_norms`, `false`, `no`, `not_analyzed`, `not_analyzed_no_norms` | `analyzed`
+`facet` | Creates a faceted index. See [Faceting](#faceting) for more information. | `true`, `false` | `false`
+`store` | If `true`, the value is returned in the search result; otherwise, the value is not returned. | `true`, `false` | `false`
+
+#### Index Guard Clauses
+
+> Example of failing to check if the index data field exists:
+
+```
+if (doc.min_length) {
+  index("min_length", doc.min_length, {"store": true});
+}
+```
+
+The `index` function requires the name of the data field to index as the second parameter.
+However,
+if that data field does not exist for the document,
+an error occurs.
+The solution is to use an appropriate 'guard clause' that checks if the field exists,
+and contains the expected type of data,
+_before_ attempting to create the corresponding index.
+
+<div></div>
+
+> Using a guard clause to check if the required data field exists, and holds a number, _before_ attempting to index:
+
+```
+if (typeof(doc.min_length) === 'number') {
+  index("min_length", doc.min_length, {"store": true});
+}
+```
+
+You might use the javascript `typeof` function to perform the guard clause test.
+If the field exists _and_ has the expected type,
+the correct type name is returned,
+so the guard clause test succeeds and it is safe to use the index function.
+If the field does not exist,
+you would not get back the expected type of the field,
+therefore you would not attempt to index the field.
+
+Whatever guard clause test you decide to use,
+remember that Javascript considers a result to be false if one of the following values is tested:
+
+-	'undefined'
+-	null
+-	The number +0
+-	The number -0
+-	NaN (not a number)
+-	"" (the empty string)
+
+<div></div>
+
+> A 'generic' guard clause:
+
+```
+if (typeof(doc.min_length) !== 'undefined') {
+  // The field exists, and does have a type, so we can proceed to index using it.
+  ...
+}
+```
+
+Therefore,
+a possible generic guard clause simply tests to ensure that the type of the candidate data field is defined.
 
 ### Analyzers
 
@@ -116,19 +167,20 @@ facet | creates a faceted index. See [Faceting](#faceting) for more info. | `tru
 }
 ```
 
-Analyzers are settings which define how to recognize terms within text. This can be helpful if you need to [index multiple languages](#language-specific-analyzers). 
+Analyzers are settings which define how to recognize terms within text. This can be helpful if you need to [index multiple languages](search.html#language-specific-analyzers). 
 
 Here's the list of generic analyzers supported by Cloudant search:
 
 Analyzer | Description
 ---------|------------
-standard | Default analyzer; implements the Word Break rules from the [Unicode Text Segmentation algorithm](http://www.unicode.org/reports/tr29/)
-email | Like standard but tries harder to match an email address as a complete token.
-keyword | Input is not tokenized at all.
-simple | Divides text at non-letters.
-whitespace | Divides text at whitespace boundaries.
-classic | The standard Lucene analyzer circa release 3.1. You'll know if you need it.
+`classic` | The standard Lucene analyzer, circa release 3.1. You'll know if you need it.
+`email` | Like the `standard` analyzer, but tries harder to match an email address as a complete token.
+`keyword` | Input is not tokenized at all.
+`simple` | Divides text at non-letters.
+`standard` | The default analyzer. It implements the Word Break rules from the [Unicode Text Segmentation algorithm](http://www.unicode.org/reports/tr29/).
+`whitespace` | Divides text at whitespace boundaries.
 
+<div></div>
 #### Language-Specific Analyzers
 
 These analyzers will omit very common words in the specific language, and many also [remove prefixes and suffixes](http://en.wikipedia.org/wiki/Stemming). The name of the language is also the name of the analyzer.
@@ -168,6 +220,12 @@ These analyzers will omit very common words in the specific language, and many a
 * thai
 * turkish
 
+<aside class="information">Language-specific analyzers are optimized for the specified language.
+You cannot combine a generic analyzer with a language-specific analyzer.
+However,
+you could use the [`perfield` analyzer](#per-field-analyzers) to select different analyzers for different fields within the documents.</aside>
+
+<div></div>
 #### Per-Field Analyzers
 
 > Example of defining different analyzers for different fields:
@@ -193,7 +251,7 @@ These analyzers will omit very common words in the specific language, and many a
 
 The `perfield` analyzer configures multiple analyzers for different fields.
 
-<h3></h3>
+<div></div>
 #### Stop Words
 
 > Example of defining non-indexed ('stop') words:
@@ -206,8 +264,8 @@ The `perfield` analyzer configures multiple analyzers for different fields.
       "analyzer": {
         "name": "portuguese",
         "stopwords": [
-          "foo", 
-          "bar", 
+          "foo",
+          "bar",
           "baz"
         ]
       },
@@ -220,6 +278,60 @@ The `perfield` analyzer configures multiple analyzers for different fields.
 Stop words are words that do not get indexed. You define them within a design document by turning the analyzer string into an object.
 
 <aside>The `keyword`, `simple` and `whitespace` analyzers do not support stop words.</aside>
+
+<div></div>
+#### Testing analyzer tokenization
+
+> [Example test of the `keyword` analyzer](try.html#requestType=analyzers&predefinedQuery=keyword)
+
+```shell
+curl 'https://<account>.cloudant.com/_search_analyze' -H 'Content-Type: application/json'
+  -d '{"analyzer":"keyword", "text":"ablanks@renovations.com"}'
+```
+
+```http
+Host: <account>.cloudant.com
+POST /_search_analyze HTTP/1.1
+Content-Type: application/json
+{"analyzer":"keyword", "text":"ablanks@renovations.com"}
+```
+
+> Result of testing the `keyword` analyzer
+
+```json
+{
+  "tokens": [
+    "ablanks@renovations.com"
+  ]
+}
+```
+
+> [Example test of the `standard` analyzer](try.html#requestType=analyzers&predefinedQuery=standard)
+
+```shell
+curl 'https://<account>.cloudant.com/_search_analyze' -H 'Content-Type: application/json'
+  -d '{"analyzer":"standard", "text":"ablanks@renovations.com"}'
+```
+
+```http
+Host: <account>.cloudant.com
+POST /_search_analyze HTTP/1.1
+Content-Type: application/json
+{"analyzer":"standard", "text":"ablanks@renovations.com"}
+```
+
+> Result of testing the `standard` analyzer
+
+```json
+{
+  "tokens": [
+    "ablanks",
+    "renovations.com"
+  ]
+}
+```
+
+You can test the results of analyzer tokenization by posting sample data to the `_search_analyze` endpoint or using our [analyzer test form](try.html#requestType=analyzers).
 
 ### Queries
 
@@ -245,25 +357,67 @@ db.search($DESIGN_ID, $SEARCH_INDEX, {
 Once you've got an index written, you can query it with a `GET` request to `https://$USERNAME.cloudant.com/$DATABASE/$DESIGN_ID/_search/$INDEX_NAME`. Specify your search query in the `query` query parameter.
 
 #### Query Parameters
+<aside class="warning">You must enable faceting before you can use the following parameters:
+<ul>
+<li> `counts`
+<li> `ridges`
+<li> `drilldown`
+</ul>
+</aside>
+
 
 <!-- The numeric `limit` was suggested by Glynn, in FB 40734. -->
 
 Argument | Description | Optional | Type | Supported Values
 ---------|-------------|----------|------|------------------
-`bookmark` | A bookmark that was received from a previous search. This allows you to page through the results. If there are no more results after the bookmark, you will get a response with an empty rows array and the same bookmark. That way you can determine that you have reached the end of the result list. | yes | string | 
+`bookmark` | A bookmark that was received from a previous search. This allows you to page through the results. If there are no more results after the bookmark, you will get a response with an empty rows array and the same bookmark. That way you can determine that you have reached the end of the result list. | yes | string |
 `counts` | This field defines an array of names of string fields, for which counts should be produced. The response will contain counts for each unique value of this field name among the documents matching the search query. | yes | JSON | A JSON array of field names
-`drilldown` | This field can be used several times. Each use defines a pair of a field name and a value. The search will only match documents that have the given value in the field name. It differs from using "fieldname:value" in the q parameter only in that the values are not analyzed. | yes | JSON | A JSON array with two elements, the field name and the value.
+`drilldown` | This field can be used several times. Each use defines a pair of a field name and a value. The search will only match documents that have the given value in the field name. It differs from using `"fieldname:value"` in the q parameter only in that the values are not analyzed. | yes | JSON | A JSON array with two elements, the field name and the value.
 `group_field` | Field by which to group search matches. | yes | String | A string containing the field name and optionally the type of the field (string or number) in angle brackets. If the type is not specified, it defaults to string. For example, `age<number>`.
-`group_limit` | Maximum group count. This field can only be used if group_field is specified. | yes | Numeric | 
+`group_limit` | Maximum group count. This field can only be used if group_field is specified. | yes | Numeric |
 `group_sort` | This field defines the order of the groups in a search using group_field. The default sort order is relevance. | yes | JSON | This field can have the same values as the sort field, so single fields as well as arrays of fields are supported.
 `include_docs` | Include the full content of the documents in the response | yes | boolean |
 `limit` | Limit the number of the returned documents to the specified number. In case of a grouped search, this parameter limits the number of documents per group. | yes | numeric | The limit value can be any positive integer number up to and including 200.
-`query` | A Lucene query | no | string or number | 
-`ranges` | This field defines ranges for faceted, numeric search fields. The value is a JSON object where the fields names are numeric, faceted search fields and the values of the fields are again JSON objects. Their field names are names for ranges. The values are Strings describing the range, for example "[0 TO 10]" | yes | JSON | The value must be on object whose fields again have objects as their values. These objects must have string describing ranges as their field values.
-`sort` | Specifies the sort order of the results. In a grouped search (i.e. when group_field is used), this specifies the sort order within a group. The default sort order is relevance. | yes | JSON | A JSON string of the form "fieldname<type>" or -fieldname<type> for descending order, where fieldname is the name of a string or number field and type is either number or string or a JSON array of such strings. The type part is optional and defaults to number. Some examples are "foo", "-foo", "bar<string>", "-foo<number>" and ["-foo<number>", "bar<string>"]. String fields used for sorting must not be analyzed fields. The field(s) used for sorting must be indexed by the same indexer used for the search query.
+`query` | A Lucene query | no | string or number |
+`ranges` | This field defines ranges for faceted, numeric search fields. The value is a JSON object where the fields names are numeric, faceted search fields and the values of the fields are again JSON objects. Their field names are names for ranges. The values are Strings describing the range, for example `"[0 TO 10]"` | yes | JSON | The value must be on object whose fields again have objects as their values. These objects must have string describing ranges as their field values.
+`sort` | Specifies the sort order of the results. In a grouped search (i.e. when group_field is used), this specifies the sort order within a group. The default sort order is relevance. | yes | JSON | A JSON string of the form `"fieldname<type>"` or `-fieldname<type>` for descending order, where fieldname is the name of a string or number field and type is either number or string or a JSON array of such strings. The type part is optional and defaults to number. Some examples are `"foo"`, `"-foo"`, `"bar<string>"`, `"-foo<number>"` and `["-foo<number>", "bar<string>"]`. String fields used for sorting must not be analyzed fields. The field(s) used for sorting must be indexed by the same indexer used for the search query.
 `stale` | Don't wait for the index to finish building to return results. | yes | string | ok
+`highlight_fields` | Specifies which fields should be highlighted. If specified, the result object will contain a `highlights` field with an entry for each specified field. | yes | Array of strings |
+`highlight_pre_tag` | A string inserted before the highlighted word in the highlights output | yes, defaults to `<em>` | String |
+`highlight_post_tag` | A string inserted after the highlighted word in the highlights output | yes, defaults to `<em>` | String |
+`highlight_number` | Number of fragments returned in highlights. If the search term occurs less often than the number of fragments specified, longer fragments are returned. | yes, defaults to 1 | Numeric |
+`highlight_size` | Number of characters in each fragment for highlights. | yes, defaults to 100 characters | Numeric |
+`include_fields` | A JSON array of field names to include in search results. Any fields included must have been indexed with the `store:true` option. | yes, the default is all fields | Array of strings |
 
 <aside class="warning">Do not combine the `bookmark` and `stale` options. The reason is that both these options constrain the choice of shard replicas to use for determining the response. When used together, the options can result in problems when attempting to contact slow or unavailable replicas.</aside>
+
+<aside class="warning">Note that using `include_docs=true` might have [performance implications](creating_views.html#include_docs_caveat).</aside>
+
+#### POSTing search queries
+
+> Search request using the POST API
+
+```http
+POST /db/_design/ddoc/_search/searchname HTTP/1.1
+Content-Type: application/json
+Host: account.cloudant.com
+```
+
+```shell
+curl 'https://account.cloudant.com/db/_design/ddoc/_search/searchname' -X POST -H 'Content-Type: application/json' -d @search.json
+```
+
+```json
+{
+  "q": "index:my query",
+  "sort": "foo",
+  "limit": 3
+}
+```
+
+Instead of using the `GET` HTTP method, you can also use `POST`. The main advantage of `POST` queries is, that they can have a request body, so you can specify the request as a JSON object. Each parameter in the table above corresponds to a field in the JSON object in the request body.
+
+<div> </div>
 
 ### Query Syntax
 
@@ -278,16 +432,18 @@ l*
 class:bird AND diet:carnivore
 // Herbivores that start with letter
 "l" l* AND diet:herbivore
-// Medium-sized herbivores 
+// Medium-sized herbivores
 min_length:[1 TO 3] AND diet:herbivore
-// Herbivores that are 2m long or less 
+// Herbivores that are 2m long or less
 diet:herbivore AND min_length:[-Infinity TO 2]
-// Mammals that are at least 1.5m long 
+// Mammals that are at least 1.5m long
 class:mammal AND min_length:[1.5 TO Infinity]
 // Find "Meles meles"
 latin_name:"Meles meles"
 // Mammals who are herbivore or carnivore
 diet:(herbivore OR omnivore) AND class:mammal
+// Return all results
+*:*
 ```
 
 The Cloudant search query syntax is based on the [Lucene syntax](http://lucene.apache.org/core/4_3_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Overview). Search queries take the form of name:value (unless the name is omitted, in which case they hit the default field, demonstrated in the example to your right).
@@ -298,13 +454,25 @@ If you want a fuzzy search you can run a query with `~` to find terms like the s
 
 You can alter the importance of a search term by adding `^` + a positive number. This makes matches containing the term more or less relevant to the power of the boost value, with 1 as the default. Any decimal between 0 and 1 will reduce importance while anything over 1 will increase it.
 
-Wild card searches are supported, for both single (`?`) and multiple (`*`) character searches. `dat?` would match date and data, `dat*` would match date, data, database, dates etc. Wildcards must come after the search term.
+Wild card searches are supported, for both single (`?`) and multiple (`*`) character searches. `dat?` would match date and data, `dat*` would match date, data, database, and dates.
+Wildcards must come after the search term.
+Use `*:*` to return all results.
 
 Result sets from searches are limited to 200 rows, and return 25 rows by default. The number of rows returned can be changed via the limit parameter. The response contains a bookmark. If the bookmark is passed back as a URL parameter you'll skip through the rows you've already seen and get the next set of results.
 
 The following characters require escaping if you want to search on them: `+ - && || ! ( ) { } [ ] ^ " ~ * ? : \ /`
 
 Escape these with a preceding backslash character.
+
+The response to a search query contains an order field for each of the results.
+The order field is an array where the first element is the field or fields specified in the sort parameter.
+If no sort parameter is included in the query, then the order field contains the lucene relevance score.
+If using the 'sort by distance' feature as described in [Geographical Searches](search.html#geographical-searches),
+then the first element is the distance from a point,
+measured using either kilometers or miles.
+
+<aside class="warning">The second element in the order array can be ignored.
+It is used for troubleshooting purposes only.</aside>
 
 ### Faceting
 
@@ -339,7 +507,35 @@ function(doc) {
 }
 ```
 
-Cloudant Search also supports faceted searching, which allows you to discover aggregate information about all your matches quickly and easily. You can match all documents using the special `?q=*:*` query syntax, and use the returned facets to refine your query. To indicate a field should be indexed for faceted queries, set `{"facet": true}` in its options.
+Cloudant Search also supports faceted searching,
+which allows you to discover aggregate information about all your matches quickly and easily.
+You can match all documents using the special `?q=*:*` query syntax,
+and use the returned facets to refine your query.
+To indicate a field should be indexed for faceted queries,
+set `{"facet": true}` in its options.
+
+<div></div>
+> Example `if` statement:
+
+```
+if (typeof doc.town == "string" && typeof doc.name == "string") {
+  index("town", doc.town, {facet: true});
+  index("town", doc.town, {facet: true});
+    }
+```
+
+
+<aside class="warning">In order to use facets, all the documents in the index must include all the fields that have faceting enabled. If your documents do not include all the fields, you will receive a `bad_request` error with the following reason, "dim `field_name` does not exist."
+
+If each document does not contain all the fields for facets, it is recommended that you create separate indexes for each field. If you do not create separate indexes for each field, you must include only documents that contain all the fields. Verify that the fields exist in each document using a single `if` statement.
+
+</aside>
+
+
+
+
+<div></div>
+
 
 #### Counts
 
@@ -358,7 +554,7 @@ Cloudant Search also supports faceted searching, which allows you to discover ag
   "rows":[...],
   "counts":{
     "type":{
-      "sofa": 10, 
+      "sofa": 10,
       "chair": 100,
       "lamp": 97
     }
@@ -366,7 +562,28 @@ Cloudant Search also supports faceted searching, which allows you to discover ag
 }
 ```
 
-The count facet syntax takes a list of fields and returns the number of query results for each unique value of each named field.
+The count facet syntax takes a list of fields,
+and returns the number of query results for each unique value of each named field.
+
+<aside class="warning">The count operation works only if the indexed values are strings.
+The indexed values cannot be mixed types.
+For example,
+if 100 strings are indexed,
+and one number,
+then the index cannot be used for count operations.
+You can check the type using the `typeof` operator,
+and convert using `parseInt`, `parseFloat` and `.toString()` functions.
+</aside>
+
+<div></div>
+
+#### Drilldown
+
+Add `drilldown=["dimension","label"]` to a search query and restrict results to documents with dimension equal to the given label. You can include multiple drilldown parameters to restrict results along multiple dimensions.
+
+Using a drilldown parameter is similar to using `key:value` in the `q` parameter, but the drilldown parameter returns values that the search's analyzer might skip. For example, if the analyzer did not index a stop word like "a", drilldown will return it by `drilldown=["key","a"]`.
+
+<div></div>
 
 #### Ranges
 
@@ -392,7 +609,19 @@ The count facet syntax takes a list of fields and returns the number of query re
 }
 ```
 
-The range facet syntax reuses the standard Lucene syntax for ranges (inclusive range queries are denoted by square brackets, exclusive range queries are denoted by curly brackets) to return counts of results which fit into each specified category.
+The range facet syntax reuses the standard Lucene syntax for ranges to return counts of results which fit into each specified category.
+Inclusive range queries are denoted by square brackets (`[`, `]`).
+Exclusive range queries are denoted by curly brackets (`{`, `}`).
+
+<aside class="warning">The range operation works only if the indexed values are numbers.
+The indexed values cannot be mixed types.
+For example,
+if 100 strings are indexed,
+and one number,
+then the index cannot be used for range operations.
+You can check the type using the `typeof` operator,
+and convert using `parseInt`, `parseFloat` and `.toString()` functions.
+</aside>
 
 ### Geographical searches
 
@@ -478,9 +707,9 @@ Host: docs.cloudant.com
 ```
 
 In addition to searching by the content of textual fields,
-you can also sort your results by their distance from a geographic coordinate. 
+you can also sort your results by their distance from a geographic coordinate.
 
-You will need to index two numeric fields (representing the longitude and latitude). 
+You will need to index two numeric fields (representing the longitude and latitude).
 
 
 You can then query using the special <distance...> sort field which takes 5 parameters:
@@ -492,6 +721,38 @@ You can then query using the special <distance...> sort field which takes 5 para
 - The units to use (“km” or “mi” for kilometers and miles, respectively). The distance itself is returned in the order field
 
 
-You can combine sorting by distance with any other search query, such as range searches on the latitude and longitude or queries involving non-geographical information. That way, you can search in a bounding box and narrow down the search with additional criteria. 
+You can combine sorting by distance with any other search query, such as range searches on the latitude and longitude or queries involving non-geographical information. That way, you can search in a bounding box and narrow down the search with additional criteria.
 
+### Highlighting Search Terms
 
+> Search query with highlighting enabled
+
+```http
+GET /movies/_design/searches/_search/movies?q=movie_name:Azazel&highlight_fields=\[\"movie_name\"\]&highlight_pre_tag=\"<b>\"&highlight_post_tag=\"b/>\""&highlights_size=30&highlights_number=2 HTTP/1.1
+HOST: account.cloudant.com
+Authorization: ...
+```
+
+```shell
+curl "https://user:password@account.cloudant.com/movies/_design/searches/_search/movies?q=movie_name:Azazel&highlight_fields=\[\"movie_name\"\]&highlight_pre_tag=\"<b>\"&highlight_post_tag=\"b/>\""&highlights_size=30&highlights_number=2
+```
+
+> Search result with highlights
+
+```json
+{
+
+  "highlights": {
+    "movie_name": [
+      " on the <b>Azazel</b> Orient Express",
+      " <b>Azazel</b> manuals, you"
+    ]
+  }
+}
+```
+
+Sometimes it is useful to get the context in which a search term was mentioned so that you can display more detailed results to a user. To do this, you add the `search_highlights` parameter to the search query, specifying the field names for which you would like excerpts with the highlighted search term to be returned. By default, the search term is placed in `<em>` tags to highlight it, but this can be overridden using the `highlights_pre_tag` and `highlights_post_tag` parameters. The length of the fragments is 100 characters by default. A different length can be requested with the `hightlights_size` parameter. The `highlights_number` parameter controls the number of fragments returned, which defaults to 1.
+
+In the response, a `highlights` field will be added with one subfield per field name. For each field, you will receive an array of fragments with the search term highlighted.
+
+<aside>For highlighting to work, you need to have the field stored in the index by using the `store: true` option.</aside>
